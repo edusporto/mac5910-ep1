@@ -51,11 +51,12 @@
 #define MQTT_PORT
 #define MAX_BASE_BUFFER 1024
 
-#define ERROR_BASE_FOLDER 10
-#define ERROR_READ_FAILED 11
-#define ERROR_INVALID_INP 12
-#define ERROR_SERVER      500
-#define ERROR_CLIENT      400
+#define ERROR_BASE_FOLDER  10
+#define ERROR_READ_FAILED  11
+#define ERROR_WRITE_FAILED 12
+#define ERROR_INVALID_INP  13
+#define ERROR_SERVER       500
+#define ERROR_CLIENT       400
 
 // MQTT Control Packet types
 #define MQTT_TYP_CONNECT      1
@@ -134,10 +135,22 @@ typedef struct MqttProperty {
     union MqttPropertyContent content;
 } MqttProperty;
 
-typedef struct MqttProperties {
-    uint16_t len;
+typedef struct MqttVarHeader {
+    uint16_t pack_id;
+    uint32_t props_len;
     MqttProperty *properties;
-} MqttProperties;
+} MqttVarHeader;
+
+typedef struct MqttPayload {
+    ssize_t len;
+    uint8_t *content;
+} MqttPayload;
+
+typedef struct MqttControlPacket {
+    MqttFixedHeader fixed_header;
+    MqttVarHeader var_header;
+    MqttPayload payload;
+} MqttControlPacket;
 
 // Base folder to store topics and messages
 const char *base_folder = "/tmp/temp.mac5910.1.11796510/";
@@ -168,62 +181,119 @@ void create_base_folder() {
     }
 }
 
-uint8_t read_uint8(int fd) {
-    uint8_t byte;
-    if (read(fd, &byte, 1) <= 0) {
+
+ssize_t read_uint8(int fd, uint8_t *byte) {
+    ssize_t bytes_read = read(fd, byte, 1);
+    if (bytes_read <= 0) {
         perror("[Socket reading failed]");
         exit(ERROR_READ_FAILED);
     }
-    return byte;
+    return bytes_read;
 }
 
-uint16_t read_uint16(int fd) {
-    uint16_t val;
-    if (read(fd, &val, 2) <= 0) {
-        perror("[Socket reading failed]");
-        exit(ERROR_READ_FAILED);
+ssize_t write_uint8(int fd, uint8_t *byte) {
+    ssize_t bytes_written = write(fd, byte, 1);
+    if (bytes_written <= 0) {
+        perror("[Socket writing failed]");
+        exit(ERROR_WRITE_FAILED);
     }
-    return ntohs(val);
 }
 
-uint32_t read_uint32(int fd) {
-    uint32_t val;
-    if (read(fd, &val, 4) <= 0) {
+ssize_t read_uint16(int fd, uint16_t *val) {
+    ssize_t bytes_read = read(fd, val, 2);
+    *val = ntohs(*val);
+    if (bytes_read <= 0) {
         perror("[Socket reading failed]");
         exit(ERROR_READ_FAILED);
     }
-    return ntohl(val);
+    return bytes_read;
+}
+
+ssize_t write_uint16(int fd, uint16_t *val) {
+    uint16_t local = htons(*val);
+    ssize_t bytes_written = write(fd, &local, 2);
+    if (bytes_written <= 0) {
+        perror("[Socket writing failed]");
+        exit(ERROR_WRITE_FAILED);
+    }
+    return bytes_written;
+}
+
+ssize_t read_uint32(int fd, uint32_t *val) {
+    ssize_t bytes_read = read(fd, val, 4);
+    *val = ntohl(*val);
+    if (bytes_read <= 0) {
+        perror("[Socket reading failed]");
+        exit(ERROR_READ_FAILED);
+    }
+    return bytes_read;
+}
+
+ssize_t write_uint32(int fd, uint32_t *val) {
+    uint32_t local = htonl(*val);
+    ssize_t bytes_written = write(fd, &local, 4);
+    if (bytes_written <= 0) {
+        perror("[Socket writing failed]");
+        exit(ERROR_WRITE_FAILED);
+    }
+    return bytes_written;
 }
 
 // Read a Variable Byte Integer from a file descriptor.
-uint32_t read_variable_int(int fd) {
+ssize_t read_variable_int(int fd, uint32_t *val) {
+    ssize_t bytes_read = 0;
     uint32_t multiplier = 1;
-    uint32_t value = 0;
     uint8_t byte = 0;
-    
+
+    *val = 0;
     do {
-        byte = read_uint8(fd);
-        value += (byte & 127) * multiplier;
+        bytes_read += read_uint8(fd, &byte);
+        *val += (byte & 127) * multiplier;
         if (multiplier > 128 * 128 * 128) {
             // Invalid variable byte integer.
+            fprintf(stderr, "[Read invalid Variable Byte Integer]\n");
             exit(ERROR_INVALID_INP);
         }
         multiplier *= 128;
     } while ((byte & 128) != 0);
 
-    return value;
+    return bytes_read;
 }
 
-BinaryData read_binary_data(int fd) {
-    BinaryData data;
-    data.len = read_uint16(fd);
+ssize_t write_variable_int(int fd, uint32_t *val) {
+    ssize_t bytes_written = 0;
+    uint32_t x = *val;
+    do {
+        uint8_t byte = x % 128;
+        x = x / 128;
+        if (x > 0) { byte = byte | 128; }
+        bytes_written += write_uint8(fd, &byte);
+    } while (x > 0);
+    
+    return bytes_written;
+}
 
-    data.bytes = malloc(data.len * sizeof(uint8_t));
-    for (uint32_t i = 0; i < data.len; i++) {
-        data.bytes[i] = read_uint8(fd);
+ssize_t read_binary_data(int fd, BinaryData *data) {
+    ssize_t bytes_read = 0;
+    bytes_read += read_uint16(fd, &(data->len));
+
+    data->bytes = malloc(data->len * sizeof(uint8_t));
+    for (uint32_t i = 0; i < data->len; i++) {
+        bytes_read += read_uint8(fd, &(data->bytes[i]));
     }
 
-    return data;
+    return bytes_read;
+}
+
+ssize_t write_binary_data(int fd, BinaryData *data) {
+    ssize_t bytes_written = 0;
+    bytes_written += write_uint16(fd, &(data->len));
+
+    for (uint32_t i = 0; i < data->len; i++) {
+        bytes_written += write_uint8(fd, &(data->bytes[i]));
+    }
+
+    return bytes_written;
 }
 
 void destroy_binary_data(BinaryData data) {
@@ -231,30 +301,55 @@ void destroy_binary_data(BinaryData data) {
 }
 
 // MQTT protocol asks for UTF-8, but we'll do ASCII strings
-char *read_string(int fd) {
-    uint32_t i;
-    uint16_t len = read_uint16(fd);
+ssize_t read_string(int fd, char **str) {
+    ssize_t bytes_read = 0;
+    uint32_t i = 0;
+    uint16_t len;
+    bytes_read += read_uint16(fd, &len);
 
-    char *string = malloc((len + 1) * sizeof(char));
+    *str = malloc((len + 1) * sizeof(char));
     for (i = 0; i < len; i++) {
-        string[i] = (char)read_uint8(fd);
+        bytes_read += read_uint8(fd, (uint8_t*)&(*str)[i]);
     }
-    string[i] = '\0';
+    (*str)[i] = '\0';
 
-    return string;
+    return bytes_read;
+}
+
+// Writing null-terminated strings, without the '\0'
+ssize_t write_string(int fd, char **str) {
+    ssize_t bytes_written = 0;
+
+    uint16_t len = strlen(*str);
+
+    bytes_written += write(uint16(fd, &len));
+    for (uint16_t i = 0; i < len; i++) {
+        bytes_written += write_uint8(fd, (uint8_t*)&(*str)[i]);
+    }
+
+    return bytes_written;
 }
 
 void destroy_string(char *string) {
     free(string);
 }
 
-StringPair read_string_pair(int fd) {
-    StringPair pair;
+ssize_t read_string_pair(int fd, StringPair *pair) {
+    ssize_t bytes_read = 0;
 
-    pair.str1 = read_string(fd);
-    pair.str2 = read_string(fd);
+    bytes_read += read_string(fd, &(pair->str1));
+    bytes_read += read_string(fd, &(pair->str2));
 
-    return pair;
+    return bytes_read;
+}
+
+ssize_t write_string_pair(int fd, StringPair *pair) {
+    ssize_t bytes_written = 0;
+
+    bytes_written += write_string(fd, &(pair->str1));
+    bytes_written += write_string(fd, &(pair->str2));
+
+    return bytes_written;
 }
 
 void destroy_string_pair(StringPair pair) {
@@ -262,141 +357,247 @@ void destroy_string_pair(StringPair pair) {
     free(pair.str2);
 }
 
-// Returns a packet identifier, or 0 if not needed.
-uint16_t read_packet_identifier(int fd, MqttFixedHeader header) {
-    if (header.type != MQTT_TYP_PUBLISH ||
-        header.type != MQTT_TYP_PUBACK ||
-        header.type != MQTT_TYP_PUBREC ||
-        header.type != MQTT_TYP_PUBREL ||
-        header.type != MQTT_TYP_PUBCOMP ||
-        header.type != MQTT_TYP_SUBSCRIBE ||
-        header.type != MQTT_TYP_SUBACK ||
-        header.type != MQTT_TYP_UNSUBSCRIBE ||
+// Reads a packet identifier, or 0 if not needed.
+ssize_t read_packet_identifier(int fd, uint16_t *id, MqttFixedHeader header) {
+    ssize_t bytes_read = 0;
+
+    // If type does not contain packet identifier, ID is 0
+    *id = 0;
+
+    if (header.type != MQTT_TYP_PUBLISH     &&
+        header.type != MQTT_TYP_PUBACK      &&
+        header.type != MQTT_TYP_PUBREC      &&
+        header.type != MQTT_TYP_PUBREL      &&
+        header.type != MQTT_TYP_PUBCOMP     &&
+        header.type != MQTT_TYP_SUBSCRIBE   &&
+        header.type != MQTT_TYP_SUBACK      &&
+        header.type != MQTT_TYP_UNSUBSCRIBE &&
         header.type != MQTT_TYP_UNSUBACK    
     ) {
-        return 0;
+        return bytes_read;
     }
 
     if (header.type == MQTT_TYP_PUBLISH &&
         !(header.flags && 0b0110 > 0)) {
         // if Header is PUBLISH and QoS > 0, we read packet_id
-        return 0;
+        return bytes_read;
     }
 
-    return read_uint16(fd);
+    bytes_read = read_uint16(fd, id);
+    return bytes_read;
 }
 
-// TODO: write_variable_int
+// Writes a packet identifier, if needed.
+ssize_t write_packet_identifier(int fd, uint16_t *id, MqttFixedHeader header) {
+    ssize_t bytes_written = 0;
+
+    // If type does not contain packet identifier, do nothing.
+    if (header.type != MQTT_TYP_PUBLISH     &&
+        header.type != MQTT_TYP_PUBACK      &&
+        header.type != MQTT_TYP_PUBREC      &&
+        header.type != MQTT_TYP_PUBREL      &&
+        header.type != MQTT_TYP_PUBCOMP     &&
+        header.type != MQTT_TYP_SUBSCRIBE   &&
+        header.type != MQTT_TYP_SUBACK      &&
+        header.type != MQTT_TYP_UNSUBSCRIBE &&
+        header.type != MQTT_TYP_UNSUBACK    
+    ) {
+        return bytes_written;
+    }
+
+    // For PUBLISH packets, a Packet Identifier is only used when QoS > 0.
+    // The QoS level is defined by bits 1 and 2 of the flags.
+    if (header.type == MQTT_TYP_PUBLISH && (header.flags & 0b0110) == 0) {
+        return bytes_written;
+    }
+
+    bytes_written = write_uint16(fd, id);
+    return bytes_written;
+}
 
 int prop_id_to_type(uint16_t id) {
     switch (id) {
-        switch (id) {
-            case  1:
-            case 23:
-            case 25:
-            case 36:
-            case 37:
-            case 40:
-            case 41:
-            case 42:
-                return MQTT_PROP_BYTE;
-            case 19:
-            case 33:
-            case 34:
-            case 35:
-                return MQTT_PROP_TWO_BYTE;
-            case 2:
-            case 17:
-            case 24:
-            case 39:
-                return MQTT_PROP_FOUR_BYTE;
-            case 11:
-                return MQTT_PROP_VAR_INT;
-            case 9:
-            case 22:
-                return MQTT_PROP_BIN_DATA;
-            case 3:
-            case 8:
-            case 18:
-            case 21:
-            case 26:
-            case 28:
-            case 31:
-                return MQTT_PROP_STR;
-            case 38:
-                return MQTT_PROP_STR_PAIR;
-            default:
-                return -1;
-        }
+        case  1:
+        case 23:
+        case 25:
+        case 36:
+        case 37:
+        case 40:
+        case 41:
+        case 42:
+            return MQTT_PROP_BYTE;
+        case 19:
+        case 33:
+        case 34:
+        case 35:
+            return MQTT_PROP_TWO_BYTE;
+        case 2:
+        case 17:
+        case 24:
+        case 39:
+            return MQTT_PROP_FOUR_BYTE;
+        case 11:
+            return MQTT_PROP_VAR_INT;
+        case 9:
+        case 22:
+            return MQTT_PROP_BIN_DATA;
+        case 3:
+        case 8:
+        case 18:
+        case 21:
+        case 26:
+        case 28:
+        case 31:
+            return MQTT_PROP_STR;
+        case 38:
+            return MQTT_PROP_STR_PAIR;
+        default:
+            return -1;
     }
-
-    return -1;
 }
 
-MqttProperties *read_properties(int fd, MqttFixedHeader header) {
-    if (header.type != MQTT_TYP_CONNECT     ||
-        header.type != MQTT_TYP_CONNACK     ||
-        header.type != MQTT_TYP_PUBLISH     ||
-        header.type != MQTT_TYP_PUBACK      ||
-        header.type != MQTT_TYP_PUBREC      ||
-        header.type != MQTT_TYP_PUBCOMP     ||
-        header.type != MQTT_TYP_SUBSCRIBE   ||
-        header.type != MQTT_TYP_SUBACK      ||
-        header.type != MQTT_TYP_UNSUBSCRIBE ||
-        header.type != MQTT_TYP_UNSUBACK    ||
-        header.type != MQTT_TYP_DISCONNECT  ||
-        header.type != MQTT_TYP_AUTH) {
-        return NULL;
+ssize_t read_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header) {
+    ssize_t bytes_read = 0;
+
+    // If type does not contain properties, set them to 0
+    props->props_len = 0;
+    props->properties = NULL;
+
+    bytes_read += read_packet_identifier(fd, &props->pack_id, header);
+
+    if (header.type != MQTT_TYP_CONNECT     &&
+        header.type != MQTT_TYP_CONNACK     &&
+        header.type != MQTT_TYP_PUBLISH     &&
+        header.type != MQTT_TYP_PUBACK      &&
+        header.type != MQTT_TYP_PUBREC      &&
+        header.type != MQTT_TYP_PUBCOMP     &&
+        header.type != MQTT_TYP_SUBSCRIBE   &&
+        header.type != MQTT_TYP_SUBACK      &&
+        header.type != MQTT_TYP_UNSUBSCRIBE &&
+        header.type != MQTT_TYP_UNSUBACK    &&
+        header.type != MQTT_TYP_DISCONNECT  &&
+        header.type != MQTT_TYP_AUTH
+    ) {
+        return bytes_read;
     }
 
-    MqttProperties *properties = malloc(1 * sizeof(MqttProperties));
+    bytes_read += read_variable_int(fd, &(props->props_len));
 
-    properties->len = read_variable_int(fd);
-    properties->properties = malloc(properties->len * sizeof(MqttProperty));
-    if (!properties) { 
+    props->properties = malloc(props->props_len * sizeof(MqttProperty));
+    if (props->props_len > 0 && !props) { 
         fprintf(stderr, "[Memory error, stopping client]\n");
         exit(ERROR_SERVER);
     }
 
-    for (uint32_t i = 0; i < properties->len; i++) {
-        MqttProperty property;
+    for (uint32_t i = 0; i < props->props_len; i++) {
+        MqttProperty prop;
 
-        property.id = read_variable_int(fd);
-        switch (prop_id_to_type(property.id)) {
+        bytes_read += read_variable_int(fd, &(prop.id));
+        switch (prop_id_to_type(prop.id)) {
             case MQTT_PROP_BYTE:
-                property.content.byte = read_uint8(fd);
+                bytes_read += read_uint8(fd, &prop.content.byte);
                 break;
             case MQTT_PROP_TWO_BYTE:
-                property.content.two_byte = read_uint16(fd);
+                bytes_read += read_uint16(fd, &prop.content.two_byte);
                 break;
             case MQTT_PROP_FOUR_BYTE:
-                property.content.four_byte = read_uint32(fd);
+                bytes_read += read_uint32(fd, &prop.content.four_byte);
                 break;
             case MQTT_PROP_VAR_INT:
-                property.content.var_int = read_variable_int(fd);
+                bytes_read += read_variable_int(fd, &prop.content.var_int);
                 break;
             case MQTT_PROP_BIN_DATA:
-                property.content.data = read_binary_data(fd);
+                bytes_read += read_binary_data(fd, &prop.content.data);
                 break;
             case MQTT_PROP_STR:
-                property.content.string = read_string(fd);
+                bytes_read += read_string(fd, &prop.content.string);
                 break;
             case MQTT_PROP_STR_PAIR:
-                property.content.string_pair = read_string_pair(fd);
+                bytes_read += read_string_pair(fd, &prop.content.string_pair);
                 break;
             default:
-                fprintf(stderr, "[Invalid property id %d]\n", property.id);
+                fprintf(stderr, "[Invalid property id %d]\n", prop.id);
                 exit(ERROR_CLIENT);
+                break;
+        }
+
+        props->properties[i] = prop;
+    }
+
+    return bytes_read;
+}
+
+ssize_t write_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header) {
+    ssize_t bytes_written = 0;
+
+    // First, write the packet identifier if the packet type requires one.
+    bytes_written += write_packet_identifier(fd, &props->pack_id, header);
+
+    // Check if the packet type includes a properties section.
+    if (header.type != MQTT_TYP_CONNECT     &&
+        header.type != MQTT_TYP_CONNACK     &&
+        header.type != MQTT_TYP_PUBLISH     &&
+        header.type != MQTT_TYP_PUBACK      &&
+        header.type != MQTT_TYP_PUBREC      &&
+        header.type != MQTT_TYP_PUBCOMP     &&
+        header.type != MQTT_TYP_SUBSCRIBE   &&
+        header.type != MQTT_TYP_SUBACK      &&
+        header.type != MQTT_TYP_UNSUBSCRIBE &&
+        header.type != MQTT_TYP_UNSUBACK    &&
+        header.type != MQTT_TYP_DISCONNECT  &&
+        header.type != MQTT_TYP_AUTH
+    ) {
+        // If not, we are done with the variable header.
+        return bytes_written;
+    }
+
+    // Write the length of the properties section as a Variable Byte Integer.
+    bytes_written += write_variable_int(fd, &(props->props_len));
+
+    // Iterate through and write each property.
+    for (uint32_t i = 0; i < props->props_len; i++) {
+        MqttProperty prop = props->properties[i];
+
+        // Write the property identifier.
+        bytes_written += write_variable_int(fd, &(prop.id));
+
+        // Write the property value based on its type.
+        switch (prop_id_to_type(prop.id)) {
+            case MQTT_PROP_BYTE:
+                bytes_written += write_uint8(fd, &prop.content.byte);
+                break;
+            case MQTT_PROP_TWO_BYTE:
+                bytes_written += write_uint16(fd, &prop.content.two_byte);
+                break;
+            case MQTT_PROP_FOUR_BYTE:
+                bytes_written += write_uint32(fd, &prop.content.four_byte);
+                break;
+            case MQTT_PROP_VAR_INT:
+                bytes_written += write_variable_int(fd, &prop.content.var_int);
+                break;
+            case MQTT_PROP_BIN_DATA:
+                bytes_written += write_binary_data(fd, &prop.content.data);
+                break;
+            case MQTT_PROP_STR:
+                bytes_written += write_string(fd, &prop.content.string);
+                break;
+            case MQTT_PROP_STR_PAIR:
+                bytes_written += write_string_pair(fd, &prop.content.string_pair);
+                break;
+            default:
+                // This case should not be reached if the packet is well-formed.
+                fprintf(stderr, "[Attempted to write invalid property id %d]\n", prop.id);
+                exit(ERROR_SERVER);
                 break;
         }
     }
 
-    return properties;
+    return bytes_written;
 }
 
-void destroy_properties(MqttProperties *props) {
-    for (uint32_t i = 0; i < props->len; i++) {
-        MqttProperty prop = props->properties[i];
+void destroy_properties(MqttVarHeader props) {
+    for (uint32_t i = 0; i < props.props_len; i++) {
+        MqttProperty prop = props.properties[i];
         switch (prop_id_to_type(prop.id)) {
             case MQTT_PROP_BIN_DATA:
                 destroy_binary_data(prop.content.data);
@@ -409,8 +610,54 @@ void destroy_properties(MqttProperties *props) {
                 break;
         }
     }
-    free(props->properties);
-    free(props);
+    free(props.properties);
+}
+
+ssize_t read_control_packet(int fd, MqttControlPacket *packet) {
+    ssize_t bytes_read = 0;
+
+    // === MQTT Control Packet Fixed Header
+
+    MqttFixedHeader header;
+    uint8_t byte;
+    bytes_read += read_uint8(fd, &byte);
+    header.flags = byte & 0x0F;
+    header.type  = byte >> 4;
+    bytes_read += read_variable_int(fd, &header.len);
+
+    // === MQTT Control Packet Variable Header
+
+    MqttVarHeader var_header;
+    ssize_t remaining_read = 0;
+    remaining_read += read_var_header(fd, &var_header, header);
+    bytes_read += remaining_read;
+
+    // === MQTT Control Packet Payload
+
+    MqttPayload payload;
+    payload.len = (ssize_t)header.len - remaining_read;
+
+    payload.content = malloc(payload.len * sizeof(uint8_t));
+    for (ssize_t i = 0; i < payload.len; i++) {
+        bytes_read += read_uint8(fd, &payload.content[i]);
+    }
+
+    packet->fixed_header = header;
+    packet->var_header = var_header;
+    packet->payload = payload;
+
+    return bytes_read;
+}
+
+ssize_t write_control_packet(int fd, MqttControlPacket *packet) {
+    ssize_t bytes_written = 0;
+
+
+}
+
+void destroy_control_packet(MqttControlPacket packet) {
+    destroy_properties(packet.var_header);
+    free(packet.payload.content);
 }
 
 /* ========================================================= */
@@ -488,7 +735,13 @@ int main (int argc, char **argv) {
         // Forks to new process.
         // The child should treat the connection open on `connfd`, while the
         // parent should close this socket to listen for more connections.
-        if ((childpid = fork()) == 0) {
+
+        // FIXME/TODO: to debug on mac, disabled fork
+        // if ((childpid = fork()) == 0) {
+            // We'll use this to count the bytes we've read after the MQTT Fixed Header.
+            // This is so we can calculate the payload size.
+            ssize_t remaining_read = 0;
+
             // Child process
             printf("[Uma conexão aberta]\n");
             close(listenfd);
@@ -499,27 +752,39 @@ int main (int argc, char **argv) {
             /* ========================================================= */
             /* ========================================================= */
 
-            // === Read MQTT Control Packet Fixed Header
+            MqttControlPacket packet;
+            read_control_packet(connfd, &packet);
 
-            MqttFixedHeader header;
-            uint8_t byte = read_uint8(connfd);
-            header.flags = byte & 0x0F;
-            header.type  = byte >> 4;
-            header.len = read_variable_int(connfd);
+            // FIXED HEADER
+            // printf("Fixed header:\n");
+            // printf("header.len = %d\n", packet.fixed_header.len);
+            // printf("header.type = %d\n", packet.fixed_header.type);
+            // printf("header.flags = %d\n", packet.fixed_header.flags);
 
-            uint16_t pack_id = read_packet_identifier(connfd, header);
-            MqttProperties *properties = read_properties(connfd, header);
+            // VAR HEADER
+            // printf("Variable header:\n");
+            // printf("header.flags = %d\n", packet.fixed_header.flags);
+            // printf("header.type = %d\n", packet.fixed_header.type);
+            // printf("header.len = %d\n", packet.fixed_header.len);
+            // printf("pack_id = %d\n", packet.var_header.pack_id);
+            // printf("props.len = %d\n", packet.var_header.props_len);
+            // printf("payload[1] = %c\n", packet.payload.content[1]);
 
-            printf("Ate agora, conseguimos:\n");
-            printf("header.flags = %d\n", header.flags);
-            printf("header.type = %d\n", header.type);
-            printf("header.len = %d\n", header.len);
-            printf("pack_id = %d\n", pack_id);
-            printf("uepa\n");
-            printf("properties = %d\n", properties);
-            printf("papo\n");
+            // PAYLOAD
+            // printf("Payload length: %d\n", packet.payload.len);
+            // printf("Payload:\n");
+            // for (ssize_t i = 0; i < packet.payload.len; i++) {
+            //     printf("%d:%c\n", packet.payload.content[i], packet.payload.content[i]);
+            // }
 
-            destroy_properties(properties);
+            if (packet.fixed_header.type != MQTT_TYP_CONNECT) {
+                fprintf(stderr, "[Got invalid connection, probably not MQTT]\n");
+                exit(ERROR_CLIENT);
+            }
+
+
+
+            destroy_control_packet(packet);
 
             exit(0);
 
@@ -541,10 +806,10 @@ int main (int argc, char **argv) {
 
             printf("[Uma conexão fechada]\n");
             exit(0);
-        }
-        else {
-            close(connfd);
-        }
+        // }
+        // else {
+        //     close(connfd);
+        // }
     }
     exit(0);
 }
