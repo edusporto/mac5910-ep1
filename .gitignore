@@ -1,0 +1,19 @@
+# Compiled object files
+*.o
+
+# The server executable
+server
+
+# VS Code files (keep only specific config files)
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# macOS system files
+.DS_Store
+
+# MQTT message storage directory
+/tmp/temp.mac5910.1.11796510/
+
+# Debug files
+*.dSYM/
