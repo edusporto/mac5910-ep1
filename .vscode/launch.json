@@ -1,0 +1,38 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "C/C++: Debug Child Process",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/${fileBasenameNoExtension}",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            // "MIMode": "gdb",
+            "preLaunchTask": "Make: build project",
+            "setupCommands": [
+                {
+                    "description": "In this mode GDB will be attached to both processes after a call to fork() or vfork().",
+                    "text": "settings set target.process.stop-on-exec false",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "In this mode GDB will be attached to both processes after a call to fork() or vfork().",
+                    "text": "settings set target.process.detach-on-fork off",
+                    // "text": "-gdb-set detach-on-fork off",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set follow-fork-mode to child",
+                    "text": "settings set target.process.follow-fork-mode child",
+                    // "text": "-gdb-set follow-fork-mode child",
+                    "ignoreFailures": false
+                }
+            ]
+        }
+    ]
+}
