@@ -120,25 +120,32 @@ typedef struct MqttControlPacket {
 /* === Function declarations === */
 ssize_t read_variable_int(int fd, uint32_t *val);
 ssize_t write_variable_int(int fd, uint32_t *val);
+
 ssize_t read_binary_data(int fd, BinaryData *data);
 ssize_t write_binary_data(int fd, BinaryData *data);
 void destroy_binary_data(BinaryData data);
+
 ssize_t read_string(int fd, char **str);
 ssize_t write_string(int fd, char **str);
 void destroy_string(char *string);
+
 ssize_t read_string_pair(int fd, StringPair *pair);
 ssize_t write_string_pair(int fd, StringPair *pair);
 void destroy_string_pair(StringPair pair);
+
 ssize_t read_packet_identifier(int fd, uint16_t *id, MqttFixedHeader header);
 ssize_t write_packet_identifier(int fd, uint16_t *id, MqttFixedHeader header);
+
 int prop_id_to_type(uint16_t id);
 ssize_t read_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header);
 ssize_t write_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header);
-void destroy_properties(MqttVarHeader props);
+void destroy_var_header(MqttVarHeader props);
+
 ssize_t read_control_packet(int fd, MqttControlPacket *packet);
 void update_remaining_length(MqttControlPacket *packet);
 ssize_t write_control_packet(int fd, MqttControlPacket *packet);
 void destroy_control_packet(MqttControlPacket packet);
+
 MqttControlPacket create_connack();
 
-#endif /* MQTT_H */
+#endif

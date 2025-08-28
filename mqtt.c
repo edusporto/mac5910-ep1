@@ -366,7 +366,7 @@ ssize_t write_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header) {
     return bytes_written;
 }
 
-void destroy_properties(MqttVarHeader props) {
+void destroy_var_header(MqttVarHeader props) {
     for (uint32_t i = 0; i < props.props_len; i++) {
         MqttProperty prop = props.properties[i];
         switch (prop_id_to_type(prop.id)) {
@@ -474,7 +474,7 @@ ssize_t write_control_packet(int fd, MqttControlPacket *packet) {
 
 void destroy_control_packet(MqttControlPacket packet) {
     free((void*)packet.var_header.stuff_len);
-    destroy_properties(packet.var_header);
+    destroy_var_header(packet.var_header);
     free(packet.payload.content);
 }
 

@@ -186,9 +186,7 @@ int main (int argc, char **argv) {
 
             // VAR HEADER
             // printf("Variable header:\n");
-            // printf("header.flags = %d\n", packet.fixed_header.flags);
-            // printf("header.type = %d\n", packet.fixed_header.type);
-            // printf("header.len = %d\n", packet.fixed_header.len);
+            // TODO: print stuff
             // printf("pack_id = %d\n", packet.var_header.pack_id);
             // printf("props.len = %d\n", packet.var_header.props_len);
             // printf("payload[1] = %c\n", packet.payload.content[1]);
