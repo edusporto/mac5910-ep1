@@ -203,7 +203,7 @@ int main (int argc, char **argv) {
                 exit(ERROR_CLIENT);
             }
 
-
+            
 
             destroy_control_packet(packet);
 

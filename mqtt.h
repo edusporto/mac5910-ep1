@@ -56,14 +56,22 @@ typedef struct MqttFlgPublish {
 #define MQTT_PROP_STR_PAIR  6
 
 /* === Data structs === */
+
+typedef uint32_t var_int;
+
 typedef struct BinaryData {
     uint16_t len;
     uint8_t *bytes;
 } BinaryData;
 
+typedef struct String {
+    uint16_t len;
+    char *val;
+} String;
+
 typedef struct StringPair {
-    char *str1;
-    char *str2;
+    String str1;
+    String str2;
 } StringPair;
 
 /* === MQTT control packet representation == */
@@ -84,7 +92,7 @@ union MqttPropertyContent {
     uint32_t four_byte;
     uint32_t var_int;
     BinaryData data;
-    char *string;
+    String string;
     StringPair string_pair;
 };
 
@@ -125,9 +133,9 @@ ssize_t read_binary_data(int fd, BinaryData *data);
 ssize_t write_binary_data(int fd, BinaryData *data);
 void destroy_binary_data(BinaryData data);
 
-ssize_t read_string(int fd, char **str);
-ssize_t write_string(int fd, char **str);
-void destroy_string(char *string);
+ssize_t read_string(int fd, String *str);
+ssize_t write_string(int fd, String *str);
+void destroy_string(String str);
 
 ssize_t read_string_pair(int fd, StringPair *pair);
 ssize_t write_string_pair(int fd, StringPair *pair);

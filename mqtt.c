@@ -64,37 +64,34 @@ void destroy_binary_data(BinaryData data) {
 }
 
 // MQTT protocol asks for UTF-8, but we'll do ASCII strings
-ssize_t read_string(int fd, char **str) {
+ssize_t read_string(int fd, String *str) {
     ssize_t bytes_read = 0;
     uint32_t i = 0;
-    uint16_t len;
-    bytes_read += read_uint16(fd, &len);
+    bytes_read += read_uint16(fd, &str->len);
 
-    *str = (char*)malloc((len + 1) * sizeof(char));
-    for (i = 0; i < len; i++) {
-        bytes_read += read_uint8(fd, (uint8_t*)&(*str)[i]);
+    str->val = (char*)malloc((str->len + 1) * sizeof(char));
+    for (i = 0; i < str->len; i++) {
+        bytes_read += read_uint8(fd, (uint8_t*)&(str->val)[i]);
     }
-    (*str)[i] = '\0';
+    str->val[i] = '\0';
 
     return bytes_read;
 }
 
 // Writing null-terminated strings, without the '\0'
-ssize_t write_string(int fd, char **str) {
+ssize_t write_string(int fd, String *str) {
     ssize_t bytes_written = 0;
 
-    uint16_t len = strlen(*str);
-
-    bytes_written += write_uint16(fd, &len);
-    for (uint16_t i = 0; i < len; i++) {
-        bytes_written += write_uint8(fd, (uint8_t*)&(*str)[i]);
+    bytes_written += write_uint16(fd, &str->len);
+    for (uint16_t i = 0; i < str->len; i++) {
+        bytes_written += write_uint8(fd, (uint8_t*)&(str->val)[i]);
     }
 
     return bytes_written;
 }
 
-void destroy_string(char *string) {
-    free(string);
+void destroy_string(String str) {
+    free(str.val);
 }
 
 ssize_t read_string_pair(int fd, StringPair *pair) {
@@ -116,8 +113,8 @@ ssize_t write_string_pair(int fd, StringPair *pair) {
 }
 
 void destroy_string_pair(StringPair pair) {
-    free(pair.str1);
-    free(pair.str2);
+    destroy_string(pair.str1);
+    destroy_string(pair.str2);
 }
 
 // Reads a packet identifier, or 0 if not needed.
@@ -219,6 +216,23 @@ int prop_id_to_type(uint16_t id) {
     }
 }
 
+int contains_packet_id(uint8_t type) {
+    return (
+        type == MQTT_TYP_CONNECT     ||
+        type == MQTT_TYP_CONNACK     ||
+        type == MQTT_TYP_PUBLISH     ||
+        type == MQTT_TYP_PUBACK      ||
+        type == MQTT_TYP_PUBREC      ||
+        type == MQTT_TYP_PUBCOMP     ||
+        type == MQTT_TYP_SUBSCRIBE   ||
+        type == MQTT_TYP_SUBACK      ||
+        type == MQTT_TYP_UNSUBSCRIBE ||
+        type == MQTT_TYP_UNSUBACK    ||
+        type == MQTT_TYP_DISCONNECT  ||
+        type == MQTT_TYP_AUTH
+    );
+}
+
 ssize_t read_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header) {
     ssize_t bytes_read = 0;
 
@@ -228,19 +242,7 @@ ssize_t read_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header) {
 
     bytes_read += read_packet_identifier(fd, &props->pack_id, header);
 
-    if (header.type != MQTT_TYP_CONNECT     &&
-        header.type != MQTT_TYP_CONNACK     &&
-        header.type != MQTT_TYP_PUBLISH     &&
-        header.type != MQTT_TYP_PUBACK      &&
-        header.type != MQTT_TYP_PUBREC      &&
-        header.type != MQTT_TYP_PUBCOMP     &&
-        header.type != MQTT_TYP_SUBSCRIBE   &&
-        header.type != MQTT_TYP_SUBACK      &&
-        header.type != MQTT_TYP_UNSUBSCRIBE &&
-        header.type != MQTT_TYP_UNSUBACK    &&
-        header.type != MQTT_TYP_DISCONNECT  &&
-        header.type != MQTT_TYP_AUTH
-    ) {
+    if (!contains_packet_id(header.type)) {
         return bytes_read;
     }
 
@@ -479,7 +481,7 @@ void destroy_control_packet(MqttControlPacket packet) {
 }
 
 MqttControlPacket create_connack() {
-    MqttFixedHeader fixed_header;
+    MqttFixedHeader fixed_header = {0};
     fixed_header.type = MQTT_TYP_CONNACK;
     fixed_header.flags = MQTT_FLG_CONNACK;
     fixed_header.len = 0; // Updated by the send function
