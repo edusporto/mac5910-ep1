@@ -243,6 +243,7 @@ ssize_t read_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header) {
     bytes_read += read_packet_identifier(fd, &props->pack_id, header);
 
     if (!contains_packet_id(header.type)) {
+        // TODO: this is wrong
         return bytes_read;
     }
 

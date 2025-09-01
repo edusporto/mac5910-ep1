@@ -59,6 +59,11 @@ typedef struct MqttFlgPublish {
 
 typedef uint32_t var_int;
 
+/* Packet identifiers are actually 16-bit, but we encode it
+ * as 32 bits to deal with packets that may optionally contain
+ * a packet ID. */
+typedef uint32_t PacketID;
+
 typedef struct BinaryData {
     uint16_t len;
     uint8_t *bytes;
@@ -85,6 +90,105 @@ typedef struct MqttFixedHeader {
 } MqttFixedHeader;
 
 /* = MQTT variable header */
+
+typedef struct MqttVar_Connect {
+    String protocol_name;
+    uint8_t protocol_version;
+    uint8_t connect_flags;
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Connect;
+
+typedef struct MqttVar_Connack {
+    uint8_t ack_flags;
+    uint8_t reason_code;
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Connact;
+
+typedef struct MqttVar_Publish {
+    String topic_name;
+    PacketID packet_id;
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Publish;
+
+typedef struct MqttVar_Puback {
+    PacketID packet_id;
+    uint8_t reason_code;
+    // CHECK REMAINING LENGTH
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Puback;
+
+typedef struct MqttVar_Pubrec {
+    PacketID packet_id;
+    uint8_t reason_code;
+    // CHECK REMAINING LENGTH
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Pubrec;
+
+typedef struct MqttVar_Pubrel {
+    PacketID packet_id;
+    uint8_t reason_code;
+    // CHECK REMAINING LENGTH
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Pubrel;
+
+typedef struct MqttVar_Pubcomp {
+    PacketID packet_id;
+    uint8_t reason_code;
+    // CHECK REMAINING LENGTH
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Pubcomp;
+
+typedef struct MqttVar_Subscribe {
+    PacketID packet_id;
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Subscribe;
+
+typedef struct MqttVar_Suback {
+    PacketID packet_id;
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Suback;
+
+typedef struct MqttVar_Unsubscribe {
+    PacketID packet_id;
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Unsubscribe;
+
+typedef struct MqttVar_Unsuback {
+    PacketID packet_id;
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Unsuback;
+
+typedef struct MqttVar_Pingreq {
+    /* empty */
+} MqttVar_Pingreq;
+
+typedef struct MqttVar_Pingresp {
+    /* empty */
+} MqttVar_Pingresp;
+
+typedef struct MqttVar_Disconnect {
+    uint8_t reason_code;
+    // CHECK REMAINING_LENGTH
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Disconnect;
+
+typedef struct MqttVar_Auth {
+    uint8_t reason_code;
+    var_int props_len;
+    MqttProperty *props;
+} MqttVar_Auth;
 
 union MqttPropertyContent {
     uint8_t byte;
