@@ -490,22 +490,51 @@ ssize_t write_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header) {
     return bytes_written;
 }
 
-void destroy_var_header(MqttVarHeader props) {
-    for (uint32_t i = 0; i < props.props_len; i++) {
-        MqttProperty prop = props.properties[i];
-        switch (prop_id_to_type(prop.id)) {
-            case MQTT_PROP_BIN_DATA:
-                destroy_binary_data(prop.content.data);
-                break;
-            case MQTT_PROP_STR:
-                destroy_string(prop.content.string);
-                break;
-            case MQTT_PROP_STR_PAIR:
-                destroy_string_pair(prop.content.string_pair);
-                break;
-        }
+void destroy_var_header(MqttVarHeader var_header, MqttFixedHeader fixed_header) {
+    switch ((MqttControlType)fixed_header.type) {
+        case CONNECT:
+            destroy_properties(var_header.connect.props, var_header.connect.props_len);
+            break;
+        case CONNACK:
+            destroy_properties(var_header.connack.props, var_header.connack.props_len);
+            break;
+        case PUBLISH:
+            destroy_properties(var_header.publish.props, var_header.publish.props_len);
+            break;
+        case PUBACK:
+            destroy_properties(var_header.puback.props, var_header.puback.props_len);
+            break;
+        case PUBREC:
+            destroy_properties(var_header.pubrec.props, var_header.pubrec.props_len);
+            break;
+        case PUBREL:
+            destroy_properties(var_header.pubrel.props, var_header.pubrel.props_len);
+            break;
+        case PUBCOMP:
+            destroy_properties(var_header.pubcomp.props, var_header.pubcomp.props_len);
+            break;
+        case SUBSCRIBE:
+            destroy_properties(var_header.subscribe.props, var_header.subscribe.props_len);
+            break;
+        case UNSUBSCRIBE:
+            destroy_properties(var_header.unsubscribe.props, var_header.unsubscribe.props_len);
+            break;
+        case UNSUBACK:
+            destroy_properties(var_header.unsuback.props, var_header.unsuback.props_len);
+            break;
+        case PINGREQ:
+            /* empty */
+            break;
+        case PINGRESP:
+            /* empty */
+            break;
+        case DISCONNECT:
+            destroy_properties(var_header.disconnect.props, var_header.disconnect.props_len);
+            break;
+        case AUTH:
+            destroy_properties(var_header.auth.props, var_header.auth.props_len);
+            break;
     }
-    free(props.properties);
 }
 
 ssize_t read_control_packet(int fd, MqttControlPacket *packet) {
@@ -513,7 +542,7 @@ ssize_t read_control_packet(int fd, MqttControlPacket *packet) {
 
     // === MQTT Control Packet Fixed Header
 
-    MqttFixedHeader header;
+    MqttFixedHeader header = { 0 };
     uint8_t byte;
     bytes_read += read_uint8(fd, &byte);
     header.flags = byte & 0x0F;
@@ -522,14 +551,14 @@ ssize_t read_control_packet(int fd, MqttControlPacket *packet) {
 
     // === MQTT Control Packet Variable Header
 
-    MqttVarHeader var_header;
+    MqttVarHeader var_header = { 0 };
     ssize_t remaining_read = 0;
     remaining_read += read_var_header(fd, &var_header, header);
     bytes_read += remaining_read;
 
     // === MQTT Control Packet Payload
 
-    MqttPayload payload;
+    MqttPayload payload = { 0 };
     payload.len = (ssize_t)header.len - remaining_read;
 
     payload.content = (uint8_t*)malloc(payload.len * sizeof(uint8_t));
