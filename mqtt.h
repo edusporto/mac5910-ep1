@@ -104,7 +104,7 @@ typedef struct MqttVar_Connack {
     uint8_t reason_code;
     var_int props_len;
     MqttProperty *props;
-} MqttVar_Connact;
+} MqttVar_Connack;
 
 typedef struct MqttVar_Publish {
     String topic_name;
@@ -205,14 +205,22 @@ typedef struct MqttProperty {
     union MqttPropertyContent content;
 } MqttProperty;
 
-typedef struct MqttVarHeader {
-    uint16_t pack_id;
-    // Won't send
-    ssize_t stuff_len;
-    // Won't send
-    uint8_t *stuff;
-    uint32_t props_len;
-    MqttProperty *properties;
+typedef union MqttVarHeader {
+    MqttVar_Connect connect;
+    MqttVar_Connack connack;
+    MqttVar_Publish publish;
+    MqttVar_Puback puback;
+    MqttVar_Pubrec pubrec;
+    MqttVar_Pubrel pubrel;
+    MqttVar_Pubcomp pubcomp;
+    MqttVar_Subscribe subscribe;
+    MqttVar_Suback suback;
+    MqttVar_Unsubscribe unsubscribe;
+    MqttVar_Unsuback unsuback;
+    MqttVar_Pingreq pingreq;
+    MqttVar_Pingresp pingresp;
+    MqttVar_Disconnect disconnect;
+    MqttVar_Auth auth;
 } MqttVarHeader;
 
 /* = MQTT Payload */
