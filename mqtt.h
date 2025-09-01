@@ -261,6 +261,10 @@ ssize_t read_packet_identifier(int fd, PacketID *id, MqttFixedHeader header);
 ssize_t write_packet_identifier(int fd, PacketID *id, MqttFixedHeader header);
 
 int prop_id_to_type(uint16_t id);
+ssize_t read_properties(int fd, MqttProperty **props, var_int len);
+ssize_t write_properties(int fd, MqttProperty **props, var_int len);
+void destroy_properties(MqttProperty *props, var_int len);
+
 ssize_t read_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header);
 ssize_t write_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header);
 void destroy_var_header(MqttVarHeader props);

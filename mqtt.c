@@ -237,6 +237,68 @@ ssize_t read_properties(int fd, MqttProperty **props, var_int len) {
 
         (*props)[i] = prop;
     }
+
+    return bytes_read;
+}
+
+ssize_t write_properties(int fd, MqttProperty **props, var_int len) {
+    ssize_t bytes_written = 0;
+
+    if (len <= 0) {
+        return bytes_written;
+    }
+
+    for (uint32_t i = 0; i < len; i++) {
+        bytes_written += write_variable_int(fd, (*props)[i].id);
+        switch (prop_id_to_type((*props)[i].id)) {
+            case BYTE:
+                bytes_written += write_uint8(fd, &((*props)[i].content.byte));
+                break;
+            case TWO_BYTE:
+                bytes_written += write_uint16(fd, &((*props)[i].content.two_byte));
+                break;
+            case FOUR_BYTE:
+                bytes_written += write_uint32(fd, &((*props)[i].content.four_byte));
+                break;
+            case VAR_INT:
+                bytes_written += write_variable_int(fd, &((*props)[i].content.var_int));
+                break;
+            case BIN_DATA:
+                bytes_written += write_binary_data(fd, &((*props)[i].content.data));
+                break;
+            case STR:
+                bytes_written += write_string(fd, &((*props)[i].content.string));
+                break;
+            case STR_PAIR:
+                bytes_written += write_string_pair(fd, &((*props)[i].content.string_pair));
+                break;
+            default:
+                // This case should not be reached if the packet is well-formed.
+                fprintf(stderr, "[Attempted to read invalid property id %d]\n", (*props)[i].id);
+                exit(ERROR_CLIENT);
+                break;
+        }
+    }
+
+    return bytes_written;
+}
+
+void destroy_properties(MqttProperty *props, var_int len) {
+    for (uint32_t i = 0; i < len; i++) {
+        MqttProperty prop = props[i];
+        switch (prop_id_to_type(prop.id)) {
+            case BIN_DATA:
+                destroy_binary_data(prop.content.data);
+                break;
+            case STR:
+                destroy_string(prop.content.string);
+                break;
+            case STR_PAIR:
+                destroy_string_pair(prop.content.string_pair);
+                break;
+        }
+    }
+    free(props);
 }
 
 ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed_header) {
