@@ -419,72 +419,103 @@ ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed
 }
 
 
-ssize_t write_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header) {
+ssize_t write_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed_header) {
     ssize_t bytes_written = 0;
 
-    // Write the packet identifier if the packet type requires one
-    bytes_written += write_packet_identifier(fd, &props->pack_id, header);
-
-    // Check if the packet type includes a properties section.
-    if (header.type != MQTT_TYP_CONNECT     &&
-        header.type != MQTT_TYP_CONNACK     &&
-        header.type != MQTT_TYP_PUBLISH     &&
-        header.type != MQTT_TYP_PUBACK      &&
-        header.type != MQTT_TYP_PUBREC      &&
-        header.type != MQTT_TYP_PUBCOMP     &&
-        header.type != MQTT_TYP_SUBSCRIBE   &&
-        header.type != MQTT_TYP_SUBACK      &&
-        header.type != MQTT_TYP_UNSUBSCRIBE &&
-        header.type != MQTT_TYP_UNSUBACK    &&
-        header.type != MQTT_TYP_DISCONNECT  &&
-        header.type != MQTT_TYP_AUTH
-    ) {
-        return bytes_written;
-    }
-
-    // Write stuff
-    for (ssize_t i = 0; i < props->stuff_len; i++) {
-        bytes_written += write_uint8(fd, &(props->stuff[i]));
-    }
-
-    // Write the length of the properties section as a Variable Byte Integer
-    bytes_written += write_variable_int(fd, &(props->props_len));
-
-    for (uint32_t i = 0; i < props->props_len; i++) {
-        MqttProperty prop = props->properties[i];
-
-        // Write the property identifier.
-        bytes_written += write_variable_int(fd, &(prop.id));
-
-        // Write the property value based on its type.
-        switch (prop_id_to_type(prop.id)) {
-            case MQTT_PROP_BYTE:
-                bytes_written += write_uint8(fd, &prop.content.byte);
-                break;
-            case MQTT_PROP_TWO_BYTE:
-                bytes_written += write_uint16(fd, &prop.content.two_byte);
-                break;
-            case MQTT_PROP_FOUR_BYTE:
-                bytes_written += write_uint32(fd, &prop.content.four_byte);
-                break;
-            case MQTT_PROP_VAR_INT:
-                bytes_written += write_variable_int(fd, &prop.content.var_int);
-                break;
-            case MQTT_PROP_BIN_DATA:
-                bytes_written += write_binary_data(fd, &prop.content.data);
-                break;
-            case MQTT_PROP_STR:
-                bytes_written += write_string(fd, &prop.content.string);
-                break;
-            case MQTT_PROP_STR_PAIR:
-                bytes_written += write_string_pair(fd, &prop.content.string_pair);
-                break;
-            default:
-                // This case should not be reached if the packet is well-formed.
-                fprintf(stderr, "[Attempted to write invalid property id %d]\n", prop.id);
-                exit(ERROR_SERVER);
-                break;
-        }
+    switch ((MqttPropType)fixed_header.type) {
+        case CONNECT:
+            bytes_written += write_string(fd, &(var_header->connect.protocol_name));
+            bytes_written += write_uint8(fd, &(var_header->connect.protocol_version));
+            bytes_written += write_uint8(fd, &(var_header->connect.connect_flags));
+            bytes_written += write_variable_int(fd, &(var_header->connect.props_len));
+            bytes_written += write_properties(fd, &(var_header->connect.props), var_header->connect.props_len);
+            break;
+        case CONNACK:
+            bytes_written += write_uint8(fd, &(var_header->connack.ack_flags));
+            bytes_written += write_uint8(fd, &(var_header->connack.reason_code));
+            bytes_written += write_variable_int(fd, &(var_header->connack.props_len));
+            bytes_written += write_properties(fd, &(var_header->connack.props), var_header->connack.props_len);
+            break;
+        case PUBLISH:
+            bytes_written += write_string(fd, &(var_header->publish.topic_name));
+            bytes_written += write_packet_identifier(fd, &(var_header->publish.packet_id));
+            bytes_written += write_variable_int(fd, &(var_header->publish.props_len));
+            bytes_written += write_properties(fd, &(var_header->publish.props), var_header->publish.props_len);
+            break;
+        case PUBACK:
+            bytes_written += write_packet_identifier(fd, &(var_header->puback.packet_id));
+            bytes_written += write_uint8(fd, &(var_header->puback.reason_code));
+            if (var_header->puback.props_len > 0) {
+                bytes_written += write_variable_int(fd, &(var_header->puback.props_len));
+                bytes_written += write_properties(fd, &(var_header->puback.props), var_header->puback.props_len);
+            }
+            break;
+        case PUBREC:
+            bytes_written += write_packet_identifier(fd, &(var_header->pubrec.packet_id));
+            bytes_written += write_uint8(fd, &(var_header->pubrec.reason_code));
+            if (var_header->pubrec.props_len > 0) {
+                bytes_written += write_variable_int(fd, &(var_header->pubrec.props_len));
+                bytes_written += write_properties(fd, &(var_header->pubrec.props), var_header->pubrec.props_len);
+            }
+        case PUBREL:
+            bytes_written += write_packet_identifier(fd, &(var_header->pubrel.packet_id));
+            bytes_written += write_uint8(fd, &(var_header->pubrel.reason_code));
+            if (var_header->pubrel.props_len > 0) {
+                bytes_written += write_variable_int(fd, &(var_header->pubrel.props_len));
+                bytes_written += write_properties(fd, &(var_header->pubrel.props), var_header->pubrel.props_len);
+            }
+            break;
+        case PUBCOMP:
+            bytes_written += write_packet_identifier(fd, &(var_header->pubcomp.packet_id));
+            bytes_written += write_uint8(fd, &(var_header->pubcomp.reason_code));
+            if (var_header->pubcomp.props_len > 0) {
+                bytes_written += write_variable_int(fd, &(var_header->pubcomp.props_len));
+                bytes_written += write_properties(fd, &(var_header->pubcomp.props), var_header->pubcomp.props_len);
+            }
+            break;
+        case SUBSCRIBE:
+            bytes_written += write_packet_identifier(fd, &(var_header->subscribe.packet_id));
+            bytes_written += write_variable_int(fd, &(var_header->subscribe.props_len));
+            bytes_written += write_properties(fd, &(var_header->subscribe.props), var_header->subscribe.props_len);
+            break;
+        case SUBACK:
+            bytes_written += write_packet_identifier(fd, &(var_header->suback.packet_id));
+            bytes_written += write_variable_int(fd, &(var_header->suback.props_len));
+            bytes_written += write_properties(fd, &(var_header->suback.props), var_header->suback.props_len);
+            break;
+        case UNSUBSCRIBE:
+            bytes_written += write_packet_identifier(fd, &(var_header->unsubscribe.packet_id));
+            bytes_written += write_variable_int(fd, &(var_header->unsubscribe.props_len));
+            bytes_written += write_properties(fd, &(var_header->unsubscribe.props), var_header->unsubscribe.props_len);
+            break;
+        case UNSUBACK:
+            bytes_written += write_packet_identifier(fd, &(var_header->unsuback.packet_id));
+            bytes_written += write_variable_int(fd, &(var_header->unsuback.props_len));
+            bytes_written += write_properties(fd, &(var_header->unsuback.props), var_header->unsuback.props_len);
+            break;
+        case PINGREQ:
+            /* empty */
+            break;
+        case PINGRESP:
+            /* empty */
+            break;
+        case DISCONNECT:
+            bytes_written += write_uint8(fd, &(var_header->disconnect.reason_code));
+            if (var_header->disconnect.props_len > 0) {
+                bytes_written += write_variable_int(fd, &(var_header->disconnect.props_len));
+                bytes_written += write_properties(fd, &(var_header->disconnect.props), var_header->disconnect.props_len);
+            }
+            break;
+        case AUTH:
+            bytes_written += write_uint8(fd, &(var_header->auth.reason_code));
+            bytes_written += write_variable_int(fd, &(var_header->auth.props_len));
+            bytes_written += write_properties(fd, &(var_header->auth.props), var_header->auth.props_len);
+            break;
+        default:
+            /* This case should not be reached if the packet is well-formed. */
+            fprintf(stderr, "[Attempted to write invalid var header type %d]\n", fixed_header.type);
+            exit(ERROR_CLIENT);
+            break;
     }
 
     return bytes_written;

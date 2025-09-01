@@ -265,9 +265,9 @@ ssize_t read_properties(int fd, MqttProperty **props, var_int len);
 ssize_t write_properties(int fd, MqttProperty **props, var_int len);
 void destroy_properties(MqttProperty *props, var_int len);
 
-ssize_t read_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header);
-ssize_t write_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header);
-void destroy_var_header(MqttVarHeader props);
+ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed_header);
+ssize_t write_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed_header);
+void destroy_var_header(MqttVarHeader var_header, MqttFixedHeader fixed_header);
 
 ssize_t read_control_packet(int fd, MqttControlPacket *packet);
 void update_remaining_length(MqttControlPacket *packet);
