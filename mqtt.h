@@ -10,21 +10,23 @@
 #include "utils.h"
 
 /* === MQTT Control Packet types === */
-#define MQTT_TYP_CONNECT      1
-#define MQTT_TYP_CONNACK      2
-#define MQTT_TYP_PUBLISH      3
-#define MQTT_TYP_PUBACK       4
-#define MQTT_TYP_PUBREC       5
-#define MQTT_TYP_PUBREL       6
-#define MQTT_TYP_PUBCOMP      7
-#define MQTT_TYP_SUBSCRIBE    8
-#define MQTT_TYP_SUBACK       9
-#define MQTT_TYP_UNSUBSCRIBE 10
-#define MQTT_TYP_UNSUBACK    11
-#define MQTT_TYP_PINGREQ     12
-#define MQTT_TYP_PINGRESP    13
-#define MQTT_TYP_DISCONNECT  14
-#define MQTT_TYP_AUTH        15
+typedef enum MqttControlType {
+    CONNECT     =  1,
+    CONNACK     =  2,
+    PUBLISH     =  3,
+    PUBACK      =  4,
+    PUBREC      =  5,
+    PUBREL      =  6,
+    PUBCOMP     =  7,
+    SUBSCRIBE   =  8,
+    SUBACK      =  9,
+    UNSUBSCRIBE = 10,
+    UNSUBACK    = 11,
+    PINGREQ     = 12,
+    PINGRESP    = 13,
+    DISCONNECT  = 14,
+    AUTH        = 15,
+} MqttControlType;
 
 /* === MQTT Control Packet flags === */
 #define MQTT_FLG_CONNECT 0b0000
@@ -47,13 +49,15 @@ typedef struct MqttFlgPublish {
 #define MQTT_FLG_DISCONNECT  0b0000
 #define MQTT_FLG_AUTH        0b0000
 
-#define MQTT_PROP_BYTE      0
-#define MQTT_PROP_TWO_BYTE  1
-#define MQTT_PROP_FOUR_BYTE 2
-#define MQTT_PROP_VAR_INT   3
-#define MQTT_PROP_BIN_DATA  4
-#define MQTT_PROP_STR       5
-#define MQTT_PROP_STR_PAIR  6
+typedef enum MqttPropType {
+    BYTE      = 0,
+    TWO_BYTE  = 1,
+    FOUR_BYTE = 2,
+    VAR_INT   = 3,
+    BIN_DATA  = 4,
+    STR       = 5,
+    STR_PAIR  = 6,
+} MqttPropType;
 
 /* === Data structs === */
 
@@ -253,8 +257,8 @@ ssize_t read_string_pair(int fd, StringPair *pair);
 ssize_t write_string_pair(int fd, StringPair *pair);
 void destroy_string_pair(StringPair pair);
 
-ssize_t read_packet_identifier(int fd, uint16_t *id, MqttFixedHeader header);
-ssize_t write_packet_identifier(int fd, uint16_t *id, MqttFixedHeader header);
+ssize_t read_packet_identifier(int fd, PacketID *id, MqttFixedHeader header);
+ssize_t write_packet_identifier(int fd, PacketID *id, MqttFixedHeader header);
 
 int prop_id_to_type(uint16_t id);
 ssize_t read_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header);

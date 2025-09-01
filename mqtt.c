@@ -118,64 +118,36 @@ void destroy_string_pair(StringPair pair) {
 }
 
 // Reads a packet identifier, or 0 if not needed.
-ssize_t read_packet_identifier(int fd, uint16_t *id, MqttFixedHeader header) {
+ssize_t read_packet_identifier(int fd, PacketID *id) {
     ssize_t bytes_read = 0;
 
-    // If type does not contain packet identifier, ID is 0
-    *id = 0;
+    // TODO: Do this behavior in the caller site
+    // if (header.type == MQTT_TYP_PUBLISH &&
+    //     !(header.flags && 0b0110 > 0)) {
+    //     // if Header is PUBLISH and QoS > 0, we read packet_id
+    //     return bytes_read;
+    // }
 
-    if (header.type != MQTT_TYP_PUBLISH     &&
-        header.type != MQTT_TYP_PUBACK      &&
-        header.type != MQTT_TYP_PUBREC      &&
-        header.type != MQTT_TYP_PUBREL      &&
-        header.type != MQTT_TYP_PUBCOMP     &&
-        header.type != MQTT_TYP_SUBSCRIBE   &&
-        header.type != MQTT_TYP_SUBACK      &&
-        header.type != MQTT_TYP_UNSUBSCRIBE &&
-        header.type != MQTT_TYP_UNSUBACK    
-    ) {
-        return bytes_read;
-    }
-
-    if (header.type == MQTT_TYP_PUBLISH &&
-        !(header.flags && 0b0110 > 0)) {
-        // if Header is PUBLISH and QoS > 0, we read packet_id
-        return bytes_read;
-    }
-
-    bytes_read = read_uint16(fd, id);
+    bytes_read = read_uint16(fd, (uint16_t*)id);
     return bytes_read;
 }
 
 // Writes a packet identifier, if needed.
-ssize_t write_packet_identifier(int fd, uint16_t *id, MqttFixedHeader header) {
+ssize_t write_packet_identifier(int fd, PacketID *id, MqttFixedHeader header) {
     ssize_t bytes_written = 0;
 
-    // If type does not contain packet identifier, do nothing.
-    if (header.type != MQTT_TYP_PUBLISH     &&
-        header.type != MQTT_TYP_PUBACK      &&
-        header.type != MQTT_TYP_PUBREC      &&
-        header.type != MQTT_TYP_PUBREL      &&
-        header.type != MQTT_TYP_PUBCOMP     &&
-        header.type != MQTT_TYP_SUBSCRIBE   &&
-        header.type != MQTT_TYP_SUBACK      &&
-        header.type != MQTT_TYP_UNSUBSCRIBE &&
-        header.type != MQTT_TYP_UNSUBACK    
-    ) {
-        return bytes_written;
-    }
-
+    // TODO: Do this behavior in the caller site
     // For PUBLISH packets, a Packet Identifier is only used when QoS > 0.
     // The QoS level is defined by bits 1 and 2 of the flags.
-    if (header.type == MQTT_TYP_PUBLISH && (header.flags & 0b0110) == 0) {
-        return bytes_written;
-    }
+    // if (header.type == MQTT_TYP_PUBLISH && (header.flags & 0b0110) == 0) {
+    //     return bytes_written;
+    // }
 
-    bytes_written = write_uint16(fd, id);
+    bytes_written = write_uint16(fd, (uint16_t*)id);
     return bytes_written;
 }
 
-int prop_id_to_type(uint16_t id) {
+MqttPropType prop_id_to_type(uint16_t id) {
     switch (id) {
         case  1:
         case 23:
@@ -185,22 +157,22 @@ int prop_id_to_type(uint16_t id) {
         case 40:
         case 41:
         case 42:
-            return MQTT_PROP_BYTE;
+            return BYTE;
         case 19:
         case 33:
         case 34:
         case 35:
-            return MQTT_PROP_TWO_BYTE;
+            return TWO_BYTE;
         case 2:
         case 17:
         case 24:
         case 39:
-            return MQTT_PROP_FOUR_BYTE;
+            return FOUR_BYTE;
         case 11:
-            return MQTT_PROP_VAR_INT;
+            return VAR_INT;
         case 9:
         case 22:
-            return MQTT_PROP_BIN_DATA;
+            return BIN_DATA;
         case 3:
         case 8:
         case 18:
@@ -208,81 +180,52 @@ int prop_id_to_type(uint16_t id) {
         case 26:
         case 28:
         case 31:
-            return MQTT_PROP_STR;
+            return STR;
         case 38:
-            return MQTT_PROP_STR_PAIR;
+            return STR_PAIR;
         default:
             return -1;
     }
 }
 
-int contains_packet_id(uint8_t type) {
-    return (
-        type == MQTT_TYP_CONNECT     ||
-        type == MQTT_TYP_CONNACK     ||
-        type == MQTT_TYP_PUBLISH     ||
-        type == MQTT_TYP_PUBACK      ||
-        type == MQTT_TYP_PUBREC      ||
-        type == MQTT_TYP_PUBCOMP     ||
-        type == MQTT_TYP_SUBSCRIBE   ||
-        type == MQTT_TYP_SUBACK      ||
-        type == MQTT_TYP_UNSUBSCRIBE ||
-        type == MQTT_TYP_UNSUBACK    ||
-        type == MQTT_TYP_DISCONNECT  ||
-        type == MQTT_TYP_AUTH
-    );
-}
-
-ssize_t read_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header) {
+ssize_t read_properties(int fd, MqttProperty **props, var_int len) {
     ssize_t bytes_read = 0;
 
-    // If type does not contain properties, set them to 0
-    props->props_len = 0;
-    props->properties = NULL;
-
-    bytes_read += read_packet_identifier(fd, &props->pack_id, header);
-
-    if (!contains_packet_id(header.type)) {
-        // TODO: this is wrong
+    if (len <= 0) {
+        *props = NULL;
         return bytes_read;
     }
 
-    // TODO: read variable stuff into stuff
-    props->stuff_len = 0;
-    props->stuff = NULL;
-
-    bytes_read += read_variable_int(fd, &(props->props_len));
-
-    props->properties = (MqttProperty *)malloc(props->props_len * sizeof(MqttProperty));
-    if (props->props_len > 0 && !props) { 
+    *props = (MqttProperty *)malloc(len * sizeof(MqttProperty));
+    if (!props && len > 0) { 
         fprintf(stderr, "[Memory error, stopping client]\n");
         exit(ERROR_SERVER);
     }
 
-    for (uint32_t i = 0; i < props->props_len; i++) {
+    for (uint32_t i = 0; i < len; i++) {
         MqttProperty prop;
 
         bytes_read += read_variable_int(fd, &(prop.id));
         switch (prop_id_to_type(prop.id)) {
-            case MQTT_PROP_BYTE:
+            case BYTE:
                 bytes_read += read_uint8(fd, &prop.content.byte);
                 break;
-            case MQTT_PROP_TWO_BYTE:
+            case TWO_BYTE:
                 bytes_read += read_uint16(fd, &prop.content.two_byte);
                 break;
-            case MQTT_PROP_FOUR_BYTE:
+            case FOUR_BYTE:
                 bytes_read += read_uint32(fd, &prop.content.four_byte);
                 break;
-            case MQTT_PROP_VAR_INT:
+            case VAR_INT:
                 bytes_read += read_variable_int(fd, &prop.content.var_int);
                 break;
-            case MQTT_PROP_BIN_DATA:
+            case BIN_DATA:
                 bytes_read += read_binary_data(fd, &prop.content.data);
                 break;
-            case MQTT_PROP_STR:
+            case STR:
                 bytes_read += read_string(fd, &prop.content.string);
                 break;
-            case MQTT_PROP_STR_PAIR:
+            case STR_PAIR:
                 bytes_read += read_string_pair(fd, &prop.content.string_pair);
                 break;
             default:
@@ -292,11 +235,127 @@ ssize_t read_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header) {
                 break;
         }
 
-        props->properties[i] = prop;
+        (*props)[i] = prop;
+    }
+}
+
+ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed_header) {
+    ssize_t bytes_read = 0;
+
+    switch ((MqttPropType)fixed_header.type) {
+        case CONNECT:
+            bytes_read += read_string(fd, &(var_header->connect.protocol_name));
+            bytes_read += read_uint8(fd, &(var_header->connect.protocol_version));
+            bytes_read += read_uint8(fd, &(var_header->connect.connect_flags));
+            bytes_read += read_variable_int(fd, &(var_header->connect.props_len));
+            bytes_read += read_properties(fd, &(var_header->connect.props), var_header->connect.props_len);
+            break;
+        case CONNACK:
+            bytes_read += read_uint8(fd, &(var_header->connack.ack_flags));
+            bytes_read += read_uint8(fd, &(var_header->connack.reason_code));
+            bytes_read += read_variable_int(fd, &(var_header->connack.props_len));
+            bytes_read += read_properties(fd, &(var_header->connack.props), var_header->connack.props_len);
+            break;
+        case PUBLISH:
+            bytes_read += read_string(fd, &(var_header->publish.topic_name));
+            bytes_read += read_packet_identifier(fd, &(var_header->publish.packet_id));
+            bytes_read += read_variable_int(fd, &(var_header->publish.props_len));
+            bytes_read += read_properties(fd, &(var_header->publish.props), var_header->publish.props_len);
+            break;
+        case PUBACK:
+            bytes_read += read_packet_identifier(fd, &(var_header->puback.packet_id));
+            bytes_read += read_uint8(fd, &(var_header->puback.reason_code));
+            if (fixed_header.len - bytes_read >= 4) {
+                bytes_read += read_variable_int(fd, &(var_header->puback.props_len));
+                bytes_read += read_properties(fd, &(var_header->puback.props), var_header->puback.props_len);
+            } else {
+                var_header->puback.props_len = 0;
+                var_header->puback.props = NULL;
+            }
+            break;
+        case PUBREC:
+            bytes_read += read_packet_identifier(fd, &(var_header->pubrec.packet_id));
+            bytes_read += read_uint8(fd, &(var_header->pubrec.reason_code));
+            if (fixed_header.len - bytes_read >= 4) {
+                bytes_read += read_variable_int(fd, &(var_header->pubrec.props_len));
+                bytes_read += read_properties(fd, &(var_header->pubrec.props), var_header->pubrec.props_len);
+            } else {
+                var_header->puback.props_len = 0;
+                var_header->puback.props = NULL;
+            }
+        case PUBREL:
+            bytes_read += read_packet_identifier(fd, &(var_header->pubrel.packet_id));
+            bytes_read += read_uint8(fd, &(var_header->pubrel.reason_code));
+            if (fixed_header.len - bytes_read >= 4) {
+                bytes_read += read_variable_int(fd, &(var_header->pubrel.props_len));
+                bytes_read += read_properties(fd, &(var_header->pubrel.props), var_header->pubrel.props_len);
+            } else {
+                var_header->pubrel.props_len = 0;
+                var_header->pubrel.props = NULL;
+            }
+            break;
+        case PUBCOMP:
+            bytes_read += read_packet_identifier(fd, &(var_header->pubcomp.packet_id));
+            bytes_read += read_uint8(fd, &(var_header->pubcomp.reason_code));
+            if (fixed_header.len - bytes_read >= 4) {
+                bytes_read += read_variable_int(fd, &(var_header->pubcomp.props_len));
+                bytes_read += read_properties(fd, &(var_header->pubcomp.props), var_header->pubcomp.props_len);
+            } else {
+                var_header->pubcomp.props_len = 0;
+                var_header->pubcomp.props = NULL;
+            }
+            break;
+        case SUBSCRIBE:
+            bytes_read += read_packet_identifier(fd, &(var_header->subscribe.packet_id));
+            bytes_read += read_variable_int(fd, &(var_header->subscribe.props_len));
+            bytes_read += read_properties(fd, &(var_header->subscribe.props), var_header->subscribe.props_len);
+            break;
+        case SUBACK:
+            bytes_read += read_packet_identifier(fd, &(var_header->suback.packet_id));
+            bytes_read += read_variable_int(fd, &(var_header->suback.props_len));
+            bytes_read += read_properties(fd, &(var_header->suback.props), var_header->suback.props_len);
+            break;
+        case UNSUBSCRIBE:
+            bytes_read += read_packet_identifier(fd, &(var_header->unsubscribe.packet_id));
+            bytes_read += read_variable_int(fd, &(var_header->unsubscribe.props_len));
+            bytes_read += read_properties(fd, &(var_header->unsubscribe.props), var_header->unsubscribe.props_len);
+            break;
+        case UNSUBACK:
+            bytes_read += read_packet_identifier(fd, &(var_header->unsuback.packet_id));
+            bytes_read += read_variable_int(fd, &(var_header->unsuback.props_len));
+            bytes_read += read_properties(fd, &(var_header->unsuback.props), var_header->unsuback.props_len);
+            break;
+        case PINGREQ:
+            /* empty */
+            break;
+        case PINGRESP:
+            /* empty */
+            break;
+        case DISCONNECT:
+            bytes_read += read_uint8(fd, &(var_header->disconnect.reason_code));
+            if (fixed_header.len - bytes_read >= 2) {
+                bytes_read += read_variable_int(fd, &(var_header->disconnect.props_len));
+                bytes_read += read_properties(fd, &(var_header->disconnect.props), var_header->disconnect.props_len);
+            } else {
+                var_header->disconnect.props_len = 0;
+                var_header->disconnect.props = NULL;
+            }
+            break;
+        case AUTH:
+            bytes_read += read_uint8(fd, &(var_header->auth.reason_code));
+            bytes_read += read_variable_int(fd, &(var_header->auth.props_len));
+            bytes_read += read_properties(fd, &(var_header->auth.props), var_header->auth.props_len);
+            break;
+        default:
+            /* This case should not be reached if the packet is well-formed. */
+            fprintf(stderr, "[Attempted to read invalid var header type %d]\n", fixed_header.type);
+            exit(ERROR_CLIENT);
+            break;
     }
 
     return bytes_read;
 }
+
 
 ssize_t write_var_header(int fd, MqttVarHeader *props, MqttFixedHeader header) {
     ssize_t bytes_written = 0;
