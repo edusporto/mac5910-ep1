@@ -175,8 +175,8 @@ int main (int argc, char **argv) {
             /* ========================================================= */
             /* ========================================================= */
 
-            MqttControlPacket packet;
-            read_control_packet(connfd, &packet);
+            MqttControlPacket packet_read;
+            read_control_packet(connfd, &packet_read);
 
             // FIXED HEADER
             // printf("Fixed header:\n");
@@ -198,16 +198,16 @@ int main (int argc, char **argv) {
             //     printf("%d:%c\n", packet.payload.content[i], packet.payload.content[i]);
             // }
 
-            if (packet.fixed_header.type != CONNECT) {
+            if (packet_read.fixed_header.type != CONNECT) {
                 fprintf(stderr, "[Got invalid connection, probably not MQTT]\n");
                 exit(ERROR_CLIENT);
             }
 
-            
+            MqttControlPacket connack = create_connack();
+            write_control_packet(connfd, &connack);
+            destroy_control_packet(connack);
 
-            destroy_control_packet(packet);
-
-            exit(0);
+            destroy_control_packet(packet_read);
 
             // while ((n=read(connfd, recvline, MAXLINE)) > 0) {
             //     recvline[n]=0;
