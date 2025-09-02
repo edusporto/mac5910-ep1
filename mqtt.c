@@ -180,8 +180,8 @@ ssize_t read_properties(int fd, MqttProperty **props, var_int len) {
     }
 
     *props = (MqttProperty *)malloc(len * sizeof(MqttProperty));
-    if (!props && len > 0) { 
-        fprintf(stderr, "[Memory error, stopping client]\n");
+    if (!*props && len > 0) { 
+        fprintf(stderr, "[Memory error, stopping]\n");
         exit(ERROR_SERVER);
     }
 
@@ -306,7 +306,7 @@ ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed
             break;
         case PUBLISH:
             bytes_read += read_string(fd, &(var_header->publish.topic_name));
-            if (fixed_header.flags && 0b0110 > 0) {
+            if ((fixed_header.flags & 0b0110) > 0) {
                 bytes_read += read_packet_identifier(fd, &(var_header->publish.packet_id));
             }
             bytes_read += read_var_int(fd, &(var_header->publish.props_len));
@@ -330,8 +330,8 @@ ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed
                 bytes_read += read_var_int(fd, &(var_header->pubrec.props_len));
                 bytes_read += read_properties(fd, &(var_header->pubrec.props), var_header->pubrec.props_len);
             } else {
-                var_header->puback.props_len = 0;
-                var_header->puback.props = NULL;
+                var_header->pubrec.props_len = 0;
+                var_header->pubrec.props = NULL;
             }
             break;
         case PUBREL:
@@ -427,7 +427,7 @@ ssize_t write_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixe
             break;
         case PUBLISH:
             bytes_written += write_string(fd, &(var_header->publish.topic_name));
-            if (fixed_header.flags && 0b0110 > 0) {
+            if ((fixed_header.flags & 0b0110) > 0) {
                 bytes_written += write_packet_identifier(fd, &(var_header->publish.packet_id));
             }
             bytes_written += write_var_int(fd, &(var_header->publish.props_len));
@@ -516,12 +516,14 @@ ssize_t write_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixe
 void destroy_var_header(MqttVarHeader var_header, MqttFixedHeader fixed_header) {
     switch ((MqttControlType)fixed_header.type) {
         case CONNECT:
+            destroy_string(var_header.connect.protocol_name);
             destroy_properties(var_header.connect.props, var_header.connect.props_len);
             break;
         case CONNACK:
             destroy_properties(var_header.connack.props, var_header.connack.props_len);
             break;
         case PUBLISH:
+            destroy_string(var_header.publish.topic_name);
             destroy_properties(var_header.publish.props, var_header.publish.props_len);
             break;
         case PUBACK:
@@ -606,7 +608,7 @@ void update_remaining_length(MqttControlPacket *packet) {
     // variable header and payload to, just so we can measure their total size.
     int pipe_fds[2];
     if (pipe(pipe_fds) == -1) {
-        perror("[Pipe creation for length calculation failed]");
+        perror("[Pipe creation for length calculation failed]\n");
         exit(ERROR_SERVER);
     }
 
@@ -642,7 +644,7 @@ ssize_t write_control_packet(int fd, MqttControlPacket *packet) {
     if (packet->payload.len > 0) {
         ssize_t payload_bytes_written = write(fd, packet->payload.content, packet->payload.len);
         if (payload_bytes_written != packet->payload.len) {
-            perror("[Socket writing failed for payload]");
+            perror("[Socket writing failed for payload]\n");
             exit(ERROR_WRITE_FAILED);
         }
         total_bytes_written += payload_bytes_written;
