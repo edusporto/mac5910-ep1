@@ -95,6 +95,21 @@ typedef struct MqttFixedHeader {
 
 /* = MQTT variable header */
 
+union MqttPropertyContent {
+    uint8_t byte;
+    uint16_t two_byte;
+    uint32_t four_byte;
+    uint32_t var_int;
+    BinaryData data;
+    String string;
+    StringPair string_pair;
+};
+
+typedef struct MqttProperty {
+    uint32_t id;
+    union MqttPropertyContent content;
+} MqttProperty;
+
 typedef struct MqttVar_Connect {
     String protocol_name;
     uint8_t protocol_version;
@@ -194,21 +209,6 @@ typedef struct MqttVar_Auth {
     MqttProperty *props;
 } MqttVar_Auth;
 
-union MqttPropertyContent {
-    uint8_t byte;
-    uint16_t two_byte;
-    uint32_t four_byte;
-    uint32_t var_int;
-    BinaryData data;
-    String string;
-    StringPair string_pair;
-};
-
-typedef struct MqttProperty {
-    uint32_t id;
-    union MqttPropertyContent content;
-} MqttProperty;
-
 typedef union MqttVarHeader {
     MqttVar_Connect connect;
     MqttVar_Connack connack;
@@ -242,8 +242,8 @@ typedef struct MqttControlPacket {
 } MqttControlPacket;
 
 /* === Function declarations === */
-ssize_t read_variable_int(int fd, uint32_t *val);
-ssize_t write_variable_int(int fd, uint32_t *val);
+ssize_t read_var_int(int fd, uint32_t *val);
+ssize_t write_var_int(int fd, uint32_t *val);
 
 ssize_t read_binary_data(int fd, BinaryData *data);
 ssize_t write_binary_data(int fd, BinaryData *data);
@@ -257,10 +257,10 @@ ssize_t read_string_pair(int fd, StringPair *pair);
 ssize_t write_string_pair(int fd, StringPair *pair);
 void destroy_string_pair(StringPair pair);
 
-ssize_t read_packet_identifier(int fd, PacketID *id, MqttFixedHeader header);
-ssize_t write_packet_identifier(int fd, PacketID *id, MqttFixedHeader header);
+ssize_t read_packet_identifier(int fd, PacketID *id);
+ssize_t write_packet_identifier(int fd, PacketID *id);
 
-int prop_id_to_type(uint16_t id);
+MqttPropType prop_id_to_type(uint16_t id);
 ssize_t read_properties(int fd, MqttProperty **props, var_int len);
 ssize_t write_properties(int fd, MqttProperty **props, var_int len);
 void destroy_properties(MqttProperty *props, var_int len);

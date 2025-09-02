@@ -3,7 +3,7 @@
 #include "mqtt.h"
 
 // Read a Variable Byte Integer from a file descriptor.
-ssize_t read_variable_int(int fd, uint32_t *val) {
+ssize_t read_var_int(int fd, uint32_t *val) {
     ssize_t bytes_read = 0;
     uint32_t multiplier = 1;
     uint8_t byte = 0;
@@ -23,7 +23,7 @@ ssize_t read_variable_int(int fd, uint32_t *val) {
     return bytes_read;
 }
 
-ssize_t write_variable_int(int fd, uint32_t *val) {
+ssize_t write_var_int(int fd, uint32_t *val) {
     ssize_t bytes_written = 0;
     uint32_t x = *val;
     do {
@@ -133,7 +133,7 @@ ssize_t read_packet_identifier(int fd, PacketID *id) {
 }
 
 // Writes a packet identifier, if needed.
-ssize_t write_packet_identifier(int fd, PacketID *id, MqttFixedHeader header) {
+ssize_t write_packet_identifier(int fd, PacketID *id) {
     ssize_t bytes_written = 0;
 
     // TODO: Do this behavior in the caller site
@@ -184,7 +184,8 @@ MqttPropType prop_id_to_type(uint16_t id) {
         case 38:
             return STR_PAIR;
         default:
-            return -1;
+            fprintf(stderr, "[Invalid prop id %d, stopping]\n", id);
+            exit(ERROR_SERVER);
     }
 }
 
@@ -205,7 +206,7 @@ ssize_t read_properties(int fd, MqttProperty **props, var_int len) {
     for (uint32_t i = 0; i < len; i++) {
         MqttProperty prop;
 
-        bytes_read += read_variable_int(fd, &(prop.id));
+        bytes_read += read_var_int(fd, &(prop.id));
         switch (prop_id_to_type(prop.id)) {
             case BYTE:
                 bytes_read += read_uint8(fd, &prop.content.byte);
@@ -217,7 +218,7 @@ ssize_t read_properties(int fd, MqttProperty **props, var_int len) {
                 bytes_read += read_uint32(fd, &prop.content.four_byte);
                 break;
             case VAR_INT:
-                bytes_read += read_variable_int(fd, &prop.content.var_int);
+                bytes_read += read_var_int(fd, &prop.content.var_int);
                 break;
             case BIN_DATA:
                 bytes_read += read_binary_data(fd, &prop.content.data);
@@ -249,7 +250,7 @@ ssize_t write_properties(int fd, MqttProperty **props, var_int len) {
     }
 
     for (uint32_t i = 0; i < len; i++) {
-        bytes_written += write_variable_int(fd, (*props)[i].id);
+        bytes_written += write_var_int(fd, &((*props)[i].id));
         switch (prop_id_to_type((*props)[i].id)) {
             case BYTE:
                 bytes_written += write_uint8(fd, &((*props)[i].content.byte));
@@ -261,7 +262,7 @@ ssize_t write_properties(int fd, MqttProperty **props, var_int len) {
                 bytes_written += write_uint32(fd, &((*props)[i].content.four_byte));
                 break;
             case VAR_INT:
-                bytes_written += write_variable_int(fd, &((*props)[i].content.var_int));
+                bytes_written += write_var_int(fd, &((*props)[i].content.var_int));
                 break;
             case BIN_DATA:
                 bytes_written += write_binary_data(fd, &((*props)[i].content.data));
@@ -296,6 +297,9 @@ void destroy_properties(MqttProperty *props, var_int len) {
             case STR_PAIR:
                 destroy_string_pair(prop.content.string_pair);
                 break;
+            default:
+                /* other cases don't have to be freed */
+                break;
         }
     }
     free(props);
@@ -304,31 +308,31 @@ void destroy_properties(MqttProperty *props, var_int len) {
 ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed_header) {
     ssize_t bytes_read = 0;
 
-    switch ((MqttPropType)fixed_header.type) {
+    switch ((MqttControlType)fixed_header.type) {
         case CONNECT:
             bytes_read += read_string(fd, &(var_header->connect.protocol_name));
             bytes_read += read_uint8(fd, &(var_header->connect.protocol_version));
             bytes_read += read_uint8(fd, &(var_header->connect.connect_flags));
-            bytes_read += read_variable_int(fd, &(var_header->connect.props_len));
+            bytes_read += read_var_int(fd, &(var_header->connect.props_len));
             bytes_read += read_properties(fd, &(var_header->connect.props), var_header->connect.props_len);
             break;
         case CONNACK:
             bytes_read += read_uint8(fd, &(var_header->connack.ack_flags));
             bytes_read += read_uint8(fd, &(var_header->connack.reason_code));
-            bytes_read += read_variable_int(fd, &(var_header->connack.props_len));
+            bytes_read += read_var_int(fd, &(var_header->connack.props_len));
             bytes_read += read_properties(fd, &(var_header->connack.props), var_header->connack.props_len);
             break;
         case PUBLISH:
             bytes_read += read_string(fd, &(var_header->publish.topic_name));
             bytes_read += read_packet_identifier(fd, &(var_header->publish.packet_id));
-            bytes_read += read_variable_int(fd, &(var_header->publish.props_len));
+            bytes_read += read_var_int(fd, &(var_header->publish.props_len));
             bytes_read += read_properties(fd, &(var_header->publish.props), var_header->publish.props_len);
             break;
         case PUBACK:
             bytes_read += read_packet_identifier(fd, &(var_header->puback.packet_id));
             bytes_read += read_uint8(fd, &(var_header->puback.reason_code));
             if (fixed_header.len - bytes_read >= 4) {
-                bytes_read += read_variable_int(fd, &(var_header->puback.props_len));
+                bytes_read += read_var_int(fd, &(var_header->puback.props_len));
                 bytes_read += read_properties(fd, &(var_header->puback.props), var_header->puback.props_len);
             } else {
                 var_header->puback.props_len = 0;
@@ -339,17 +343,18 @@ ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed
             bytes_read += read_packet_identifier(fd, &(var_header->pubrec.packet_id));
             bytes_read += read_uint8(fd, &(var_header->pubrec.reason_code));
             if (fixed_header.len - bytes_read >= 4) {
-                bytes_read += read_variable_int(fd, &(var_header->pubrec.props_len));
+                bytes_read += read_var_int(fd, &(var_header->pubrec.props_len));
                 bytes_read += read_properties(fd, &(var_header->pubrec.props), var_header->pubrec.props_len);
             } else {
                 var_header->puback.props_len = 0;
                 var_header->puback.props = NULL;
             }
+            break;
         case PUBREL:
             bytes_read += read_packet_identifier(fd, &(var_header->pubrel.packet_id));
             bytes_read += read_uint8(fd, &(var_header->pubrel.reason_code));
             if (fixed_header.len - bytes_read >= 4) {
-                bytes_read += read_variable_int(fd, &(var_header->pubrel.props_len));
+                bytes_read += read_var_int(fd, &(var_header->pubrel.props_len));
                 bytes_read += read_properties(fd, &(var_header->pubrel.props), var_header->pubrel.props_len);
             } else {
                 var_header->pubrel.props_len = 0;
@@ -360,7 +365,7 @@ ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed
             bytes_read += read_packet_identifier(fd, &(var_header->pubcomp.packet_id));
             bytes_read += read_uint8(fd, &(var_header->pubcomp.reason_code));
             if (fixed_header.len - bytes_read >= 4) {
-                bytes_read += read_variable_int(fd, &(var_header->pubcomp.props_len));
+                bytes_read += read_var_int(fd, &(var_header->pubcomp.props_len));
                 bytes_read += read_properties(fd, &(var_header->pubcomp.props), var_header->pubcomp.props_len);
             } else {
                 var_header->pubcomp.props_len = 0;
@@ -369,22 +374,22 @@ ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed
             break;
         case SUBSCRIBE:
             bytes_read += read_packet_identifier(fd, &(var_header->subscribe.packet_id));
-            bytes_read += read_variable_int(fd, &(var_header->subscribe.props_len));
+            bytes_read += read_var_int(fd, &(var_header->subscribe.props_len));
             bytes_read += read_properties(fd, &(var_header->subscribe.props), var_header->subscribe.props_len);
             break;
         case SUBACK:
             bytes_read += read_packet_identifier(fd, &(var_header->suback.packet_id));
-            bytes_read += read_variable_int(fd, &(var_header->suback.props_len));
+            bytes_read += read_var_int(fd, &(var_header->suback.props_len));
             bytes_read += read_properties(fd, &(var_header->suback.props), var_header->suback.props_len);
             break;
         case UNSUBSCRIBE:
             bytes_read += read_packet_identifier(fd, &(var_header->unsubscribe.packet_id));
-            bytes_read += read_variable_int(fd, &(var_header->unsubscribe.props_len));
+            bytes_read += read_var_int(fd, &(var_header->unsubscribe.props_len));
             bytes_read += read_properties(fd, &(var_header->unsubscribe.props), var_header->unsubscribe.props_len);
             break;
         case UNSUBACK:
             bytes_read += read_packet_identifier(fd, &(var_header->unsuback.packet_id));
-            bytes_read += read_variable_int(fd, &(var_header->unsuback.props_len));
+            bytes_read += read_var_int(fd, &(var_header->unsuback.props_len));
             bytes_read += read_properties(fd, &(var_header->unsuback.props), var_header->unsuback.props_len);
             break;
         case PINGREQ:
@@ -396,7 +401,7 @@ ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed
         case DISCONNECT:
             bytes_read += read_uint8(fd, &(var_header->disconnect.reason_code));
             if (fixed_header.len - bytes_read >= 2) {
-                bytes_read += read_variable_int(fd, &(var_header->disconnect.props_len));
+                bytes_read += read_var_int(fd, &(var_header->disconnect.props_len));
                 bytes_read += read_properties(fd, &(var_header->disconnect.props), var_header->disconnect.props_len);
             } else {
                 var_header->disconnect.props_len = 0;
@@ -405,7 +410,7 @@ ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed
             break;
         case AUTH:
             bytes_read += read_uint8(fd, &(var_header->auth.reason_code));
-            bytes_read += read_variable_int(fd, &(var_header->auth.props_len));
+            bytes_read += read_var_int(fd, &(var_header->auth.props_len));
             bytes_read += read_properties(fd, &(var_header->auth.props), var_header->auth.props_len);
             break;
         default:
@@ -422,31 +427,31 @@ ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed
 ssize_t write_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed_header) {
     ssize_t bytes_written = 0;
 
-    switch ((MqttPropType)fixed_header.type) {
+    switch ((MqttControlType)fixed_header.type) {
         case CONNECT:
             bytes_written += write_string(fd, &(var_header->connect.protocol_name));
             bytes_written += write_uint8(fd, &(var_header->connect.protocol_version));
             bytes_written += write_uint8(fd, &(var_header->connect.connect_flags));
-            bytes_written += write_variable_int(fd, &(var_header->connect.props_len));
+            bytes_written += write_var_int(fd, &(var_header->connect.props_len));
             bytes_written += write_properties(fd, &(var_header->connect.props), var_header->connect.props_len);
             break;
         case CONNACK:
             bytes_written += write_uint8(fd, &(var_header->connack.ack_flags));
             bytes_written += write_uint8(fd, &(var_header->connack.reason_code));
-            bytes_written += write_variable_int(fd, &(var_header->connack.props_len));
+            bytes_written += write_var_int(fd, &(var_header->connack.props_len));
             bytes_written += write_properties(fd, &(var_header->connack.props), var_header->connack.props_len);
             break;
         case PUBLISH:
             bytes_written += write_string(fd, &(var_header->publish.topic_name));
             bytes_written += write_packet_identifier(fd, &(var_header->publish.packet_id));
-            bytes_written += write_variable_int(fd, &(var_header->publish.props_len));
+            bytes_written += write_var_int(fd, &(var_header->publish.props_len));
             bytes_written += write_properties(fd, &(var_header->publish.props), var_header->publish.props_len);
             break;
         case PUBACK:
             bytes_written += write_packet_identifier(fd, &(var_header->puback.packet_id));
             bytes_written += write_uint8(fd, &(var_header->puback.reason_code));
             if (var_header->puback.props_len > 0) {
-                bytes_written += write_variable_int(fd, &(var_header->puback.props_len));
+                bytes_written += write_var_int(fd, &(var_header->puback.props_len));
                 bytes_written += write_properties(fd, &(var_header->puback.props), var_header->puback.props_len);
             }
             break;
@@ -454,14 +459,15 @@ ssize_t write_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixe
             bytes_written += write_packet_identifier(fd, &(var_header->pubrec.packet_id));
             bytes_written += write_uint8(fd, &(var_header->pubrec.reason_code));
             if (var_header->pubrec.props_len > 0) {
-                bytes_written += write_variable_int(fd, &(var_header->pubrec.props_len));
+                bytes_written += write_var_int(fd, &(var_header->pubrec.props_len));
                 bytes_written += write_properties(fd, &(var_header->pubrec.props), var_header->pubrec.props_len);
             }
+            break;
         case PUBREL:
             bytes_written += write_packet_identifier(fd, &(var_header->pubrel.packet_id));
             bytes_written += write_uint8(fd, &(var_header->pubrel.reason_code));
             if (var_header->pubrel.props_len > 0) {
-                bytes_written += write_variable_int(fd, &(var_header->pubrel.props_len));
+                bytes_written += write_var_int(fd, &(var_header->pubrel.props_len));
                 bytes_written += write_properties(fd, &(var_header->pubrel.props), var_header->pubrel.props_len);
             }
             break;
@@ -469,28 +475,28 @@ ssize_t write_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixe
             bytes_written += write_packet_identifier(fd, &(var_header->pubcomp.packet_id));
             bytes_written += write_uint8(fd, &(var_header->pubcomp.reason_code));
             if (var_header->pubcomp.props_len > 0) {
-                bytes_written += write_variable_int(fd, &(var_header->pubcomp.props_len));
+                bytes_written += write_var_int(fd, &(var_header->pubcomp.props_len));
                 bytes_written += write_properties(fd, &(var_header->pubcomp.props), var_header->pubcomp.props_len);
             }
             break;
         case SUBSCRIBE:
             bytes_written += write_packet_identifier(fd, &(var_header->subscribe.packet_id));
-            bytes_written += write_variable_int(fd, &(var_header->subscribe.props_len));
+            bytes_written += write_var_int(fd, &(var_header->subscribe.props_len));
             bytes_written += write_properties(fd, &(var_header->subscribe.props), var_header->subscribe.props_len);
             break;
         case SUBACK:
             bytes_written += write_packet_identifier(fd, &(var_header->suback.packet_id));
-            bytes_written += write_variable_int(fd, &(var_header->suback.props_len));
+            bytes_written += write_var_int(fd, &(var_header->suback.props_len));
             bytes_written += write_properties(fd, &(var_header->suback.props), var_header->suback.props_len);
             break;
         case UNSUBSCRIBE:
             bytes_written += write_packet_identifier(fd, &(var_header->unsubscribe.packet_id));
-            bytes_written += write_variable_int(fd, &(var_header->unsubscribe.props_len));
+            bytes_written += write_var_int(fd, &(var_header->unsubscribe.props_len));
             bytes_written += write_properties(fd, &(var_header->unsubscribe.props), var_header->unsubscribe.props_len);
             break;
         case UNSUBACK:
             bytes_written += write_packet_identifier(fd, &(var_header->unsuback.packet_id));
-            bytes_written += write_variable_int(fd, &(var_header->unsuback.props_len));
+            bytes_written += write_var_int(fd, &(var_header->unsuback.props_len));
             bytes_written += write_properties(fd, &(var_header->unsuback.props), var_header->unsuback.props_len);
             break;
         case PINGREQ:
@@ -502,13 +508,13 @@ ssize_t write_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixe
         case DISCONNECT:
             bytes_written += write_uint8(fd, &(var_header->disconnect.reason_code));
             if (var_header->disconnect.props_len > 0) {
-                bytes_written += write_variable_int(fd, &(var_header->disconnect.props_len));
+                bytes_written += write_var_int(fd, &(var_header->disconnect.props_len));
                 bytes_written += write_properties(fd, &(var_header->disconnect.props), var_header->disconnect.props_len);
             }
             break;
         case AUTH:
             bytes_written += write_uint8(fd, &(var_header->auth.reason_code));
-            bytes_written += write_variable_int(fd, &(var_header->auth.props_len));
+            bytes_written += write_var_int(fd, &(var_header->auth.props_len));
             bytes_written += write_properties(fd, &(var_header->auth.props), var_header->auth.props_len);
             break;
         default:
@@ -547,6 +553,9 @@ void destroy_var_header(MqttVarHeader var_header, MqttFixedHeader fixed_header) 
         case SUBSCRIBE:
             destroy_properties(var_header.subscribe.props, var_header.subscribe.props_len);
             break;
+        case SUBACK:
+            destroy_properties(var_header.suback.props, var_header.suback.props_len);
+            break;
         case UNSUBSCRIBE:
             destroy_properties(var_header.unsubscribe.props, var_header.unsubscribe.props_len);
             break;
@@ -578,7 +587,7 @@ ssize_t read_control_packet(int fd, MqttControlPacket *packet) {
     bytes_read += read_uint8(fd, &byte);
     header.flags = byte & 0x0F;
     header.type  = byte >> 4;
-    bytes_read += read_variable_int(fd, &header.len);
+    bytes_read += read_var_int(fd, &header.len);
 
     // === MQTT Control Packet Variable Header
 
@@ -636,7 +645,7 @@ ssize_t write_control_packet(int fd, MqttControlPacket *packet) {
 
     uint8_t first_byte = (packet->fixed_header.type << 4) | (packet->fixed_header.flags & 0x0F);
     total_bytes_written += write_uint8(fd, &first_byte);
-    total_bytes_written += write_variable_int(fd, &packet->fixed_header.len);
+    total_bytes_written += write_var_int(fd, &packet->fixed_header.len);
 
     // === Variable Header
 
@@ -657,38 +666,34 @@ ssize_t write_control_packet(int fd, MqttControlPacket *packet) {
 }
 
 void destroy_control_packet(MqttControlPacket packet) {
-    free((void*)packet.var_header.stuff_len);
-    destroy_var_header(packet.var_header);
+    destroy_var_header(packet.var_header, packet.fixed_header);
     free(packet.payload.content);
 }
 
 MqttControlPacket create_connack() {
-    MqttFixedHeader fixed_header = {0};
-    fixed_header.type = MQTT_TYP_CONNACK;
-    fixed_header.flags = MQTT_FLG_CONNACK;
-    fixed_header.len = 0; // Updated by the send function
+    MqttFixedHeader fixed_header = {
+        .type  = CONNACK,
+        .flags = MQTT_FLG_CONNACK,
+        .len   = 0 /* updated by the send function */
+    };
 
-    MqttVarHeader var_header;
-    var_header.pack_id = 0;
-    var_header.stuff_len = 2;
-    var_header.stuff = (uint8_t*)malloc(2 * sizeof(uint8_t));
-    var_header.stuff[0] = 0;
-    var_header.stuff[1] = 0;
+    MqttVarHeader var_header = { .connack = {
+        .ack_flags   = 0, /* fixed to 0 */
+        .reason_code = 0, /* fixed to 0 */
+        .props_len   = 0,
+        .props       = NULL
+    }};
 
-    var_header.props_len = 3;
-    
-    // The function appears incomplete in the original header
-    // Completing with minimal implementation to make it compile
-    var_header.properties = NULL;
+    MqttPayload payload = {
+        .len     = 0,
+        .content = NULL
+    };
 
-    MqttPayload payload;
-    payload.len = 0;
-    payload.content = NULL;
-
-    MqttControlPacket packet;
-    packet.fixed_header = fixed_header;
-    packet.var_header = var_header;
-    packet.payload = payload;
+    MqttControlPacket packet = {
+        .fixed_header = fixed_header,
+        .var_header = var_header,
+        .payload = payload
+    };
 
     return packet;
 }

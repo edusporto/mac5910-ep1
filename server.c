@@ -198,7 +198,7 @@ int main (int argc, char **argv) {
             //     printf("%d:%c\n", packet.payload.content[i], packet.payload.content[i]);
             // }
 
-            if (packet.fixed_header.type != MQTT_TYP_CONNECT) {
+            if (packet.fixed_header.type != CONNECT) {
                 fprintf(stderr, "[Got invalid connection, probably not MQTT]\n");
                 exit(ERROR_CLIENT);
             }
