@@ -229,6 +229,10 @@ typedef union MqttVarHeader {
 
 /* = MQTT Payload */
 
+// TODO: treat each payload correctly
+
+// typedef MqttPay_Connect
+
 typedef struct MqttPayload {
     ssize_t len;
     uint8_t *content;

@@ -48,7 +48,7 @@
 #define MAXDATASIZE 100
 #define MAXLINE 4096
 
-#define SERVER_PORT 17170
+#define SERVER_PORT 1883
 #define MAX_BASE_BUFFER 1024
 
 /* ========================================================= */
@@ -175,8 +175,10 @@ int main (int argc, char **argv) {
             /* ========================================================= */
             /* ========================================================= */
 
-            MqttControlPacket packet_read;
-            read_control_packet(connfd, &packet_read);
+            MqttControlPacket recv = { 0 };
+            MqttControlPacket send = { 0 };
+
+            read_control_packet(connfd, &recv);
 
             // FIXED HEADER
             // printf("Fixed header:\n");
@@ -198,16 +200,28 @@ int main (int argc, char **argv) {
             //     printf("%d:%c\n", packet.payload.content[i], packet.payload.content[i]);
             // }
 
-            if (packet_read.fixed_header.type != CONNECT) {
+            if (recv.fixed_header.type != CONNECT) {
                 fprintf(stderr, "[Got invalid connection, probably not MQTT]\n");
                 exit(ERROR_CLIENT);
             }
+            destroy_control_packet(recv);
+        
+            send = create_connack();
+            write_control_packet(connfd, &send);
+            destroy_control_packet(send);
 
-            MqttControlPacket connack = create_connack();
-            write_control_packet(connfd, &connack);
-            destroy_control_packet(connack);
+            read_control_packet(connfd, &recv);
 
-            destroy_control_packet(packet_read);
+            switch ((MqttControlType)recv.fixed_header.type) {
+                SUBSCRIBE:
+                    MqttVar_Subscribe var_header = recv.var_header.subscribe;
+                    // TODO: treat
+                    break;
+                default:
+                    fprintf(stderr, "[Warning: packet type %d still not implemented]\n", recv.fixed_header.type);
+            }
+
+            destroy_control_packet(recv);
 
             // while ((n=read(connfd, recvline, MAXLINE)) > 0) {
             //     recvline[n]=0;
