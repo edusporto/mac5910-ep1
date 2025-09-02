@@ -117,32 +117,14 @@ void destroy_string_pair(StringPair pair) {
     destroy_string(pair.str2);
 }
 
-// Reads a packet identifier, or 0 if not needed.
 ssize_t read_packet_identifier(int fd, PacketID *id) {
     ssize_t bytes_read = 0;
-
-    // TODO: Do this behavior in the caller site
-    // if (header.type == MQTT_TYP_PUBLISH &&
-    //     !(header.flags && 0b0110 > 0)) {
-    //     // if Header is PUBLISH and QoS > 0, we read packet_id
-    //     return bytes_read;
-    // }
-
     bytes_read = read_uint16(fd, (uint16_t*)id);
     return bytes_read;
 }
 
-// Writes a packet identifier, if needed.
 ssize_t write_packet_identifier(int fd, PacketID *id) {
     ssize_t bytes_written = 0;
-
-    // TODO: Do this behavior in the caller site
-    // For PUBLISH packets, a Packet Identifier is only used when QoS > 0.
-    // The QoS level is defined by bits 1 and 2 of the flags.
-    // if (header.type == MQTT_TYP_PUBLISH && (header.flags & 0b0110) == 0) {
-    //     return bytes_written;
-    // }
-
     bytes_written = write_uint16(fd, (uint16_t*)id);
     return bytes_written;
 }
@@ -324,7 +306,9 @@ ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed
             break;
         case PUBLISH:
             bytes_read += read_string(fd, &(var_header->publish.topic_name));
-            bytes_read += read_packet_identifier(fd, &(var_header->publish.packet_id));
+            if (fixed_header.flags && 0b0110 > 0) {
+                bytes_read += read_packet_identifier(fd, &(var_header->publish.packet_id));
+            }
             bytes_read += read_var_int(fd, &(var_header->publish.props_len));
             bytes_read += read_properties(fd, &(var_header->publish.props), var_header->publish.props_len);
             break;
@@ -443,7 +427,9 @@ ssize_t write_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixe
             break;
         case PUBLISH:
             bytes_written += write_string(fd, &(var_header->publish.topic_name));
-            bytes_written += write_packet_identifier(fd, &(var_header->publish.packet_id));
+            if (fixed_header.flags && 0b0110 > 0) {
+                bytes_written += write_packet_identifier(fd, &(var_header->publish.packet_id));
+            }
             bytes_written += write_var_int(fd, &(var_header->publish.props_len));
             bytes_written += write_properties(fd, &(var_header->publish.props), var_header->publish.props_len);
             break;
