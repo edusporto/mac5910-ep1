@@ -1,4 +1,22 @@
-#include "utils.h"
+#include "sockets.h"
+
+ssize_t read_many(int fd, uint8_t *byte, size_t len) {
+    ssize_t bytes_read = read(fd, byte, len);
+    if (bytes_read < 0 || (size_t)bytes_read < len) {
+        perror("[Socket reading failed]");
+        exit(ERROR_READ_FAILED);
+    }
+    return bytes_read;
+}
+
+ssize_t write_many(int fd, uint8_t *byte, size_t len) {
+    ssize_t bytes_written = write(fd, byte, len);
+    if (bytes_written < 0 || (size_t)bytes_written < len) {
+        perror("[Socket writing failed]");
+        exit(ERROR_READ_FAILED);
+    }
+    return bytes_written;
+}
 
 ssize_t read_uint8(int fd, uint8_t *byte) {
     ssize_t bytes_read = read(fd, byte, 1);

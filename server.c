@@ -161,6 +161,9 @@ int main (int argc, char **argv) {
 
         // FIXME/TODO: to debug on mac, disabled fork
         // if ((childpid = fork()) == 0) {
+            // TODO: reenable fork
+            childpid = 42;
+
             // We'll use this to count the bytes we've read after the MQTT Fixed Header.
             // This is so we can calculate the payload size.
             ssize_t remaining_read = 0;
@@ -213,9 +216,19 @@ int main (int argc, char **argv) {
             read_control_packet(connfd, &recv);
 
             switch ((MqttControlType)recv.fixed_header.type) {
-                SUBSCRIBE:
-                    MqttVar_Subscribe var_header = recv.var_header.subscribe;
-                    // TODO: treat
+                case SUBSCRIBE:
+                    
+                    // TODO
+                    break;
+                case UNSUBSCRIBE:
+                    // TODO
+                    break;
+                case PUBLISH:
+                    /* We only accept PUBLISH with QoS = 0 */
+                    // TODO
+                    break;
+                case DISCONNECT:
+                    // TODO
                     break;
                 default:
                     fprintf(stderr, "[Warning: packet type %d still not implemented]\n", recv.fixed_header.type);

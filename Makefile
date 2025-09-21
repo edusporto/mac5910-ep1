@@ -1,16 +1,16 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -g
+CFLAGS = -Wall -Wextra -g -std=c99
 LDFLAGS =
 
 # Target binary
 TARGET = server
 
 # Source files
-SRCS = server.c mqtt.c utils.c
+SRCS = server.c mqtt.c sockets.c
 OBJS = $(SRCS:.c=.o)
 
 # Header files for dependency tracking
-HEADERS = mqtt.h utils.h errors.h
+HEADERS = mqtt.h sockets.h errors.h
 
 # Default target
 all: $(TARGET)

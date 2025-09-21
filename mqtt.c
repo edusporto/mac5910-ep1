@@ -1,6 +1,7 @@
 #include <unistd.h>
 
 #include "mqtt.h"
+#include "sockets.h"
 
 // Read a Variable Byte Integer from a file descriptor.
 ssize_t read_var_int(int fd, uint32_t *val) {
@@ -590,9 +591,7 @@ ssize_t read_control_packet(int fd, MqttControlPacket *packet) {
     payload.len = (ssize_t)header.len - remaining_read;
 
     payload.content = (uint8_t*)malloc(payload.len * sizeof(uint8_t));
-    for (ssize_t i = 0; i < payload.len; i++) {
-        bytes_read += read_uint8(fd, &payload.content[i]);
-    }
+    bytes_read += read_many(fd, payload.content, payload.len);
 
     packet->fixed_header = header;
     packet->var_header = var_header;
@@ -642,7 +641,7 @@ ssize_t write_control_packet(int fd, MqttControlPacket *packet) {
     // === Payload
 
     if (packet->payload.len > 0) {
-        ssize_t payload_bytes_written = write(fd, packet->payload.content, packet->payload.len);
+        ssize_t payload_bytes_written = write_many(fd, packet->payload.content, packet->payload.len);
         if (payload_bytes_written != packet->payload.len) {
             perror("[Socket writing failed for payload]\n");
             exit(ERROR_WRITE_FAILED);
