@@ -7,7 +7,6 @@
 #include <string.h>
 
 #include "errors.h"
-// #include "sockets.h"
 
 /* === MQTT Control Packet types === */
 typedef enum MqttControlType {

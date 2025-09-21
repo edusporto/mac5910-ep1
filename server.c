@@ -34,15 +34,15 @@
 #include <string.h>
 #include <netdb.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <time.h>
 #include <unistd.h>
 
-#include "mqtt.h"
 #include "errors.h"
+#include "management.h"
+#include "mqtt.h"
 
 #define LISTENQ 1
 #define MAXDATASIZE 100
@@ -50,38 +50,6 @@
 
 #define SERVER_PORT 1883
 #define MAX_BASE_BUFFER 1024
-
-/* ========================================================= */
-/* ================= Part of my solution =================== */
-
-// Base folder to store topics and messages
-const char *base_folder = "/tmp/temp.mac5910.1.11796510/";
-
-int directory_exists(const char *path) {
-    struct stat st;
-    return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
-}
-
-// Creates base folder to store topics and messages.
-void create_base_folder() {
-    // It should not exist - if it does, it was probably kept from an earlier execution.
-    if (directory_exists(base_folder)) {
-        if (rmdir(base_folder) == -1) {
-            fprintf(stderr, "[ERROR: could not delete %s]\n", base_folder);
-            exit(ERROR_BASE_FOLDER);
-        }
-
-        if (mkdir(base_folder, 0744) == -1) {
-            fprintf(stderr, "[ERROR: could not create %s]\n", base_folder);
-            exit(ERROR_BASE_FOLDER);
-        }
-    } else {
-        if (mkdir(base_folder, 0744) == -1) {
-            fprintf(stderr, "[ERROR: could not create %s]\n", base_folder);
-            exit(ERROR_BASE_FOLDER);
-        }
-    }
-}
 
 /* ========================================================= */
 
@@ -163,10 +131,6 @@ int main (int argc, char **argv) {
         // if ((childpid = fork()) == 0) {
             // TODO: reenable fork
             childpid = 42;
-
-            // We'll use this to count the bytes we've read after the MQTT Fixed Header.
-            // This is so we can calculate the payload size.
-            ssize_t remaining_read = 0;
 
             // Child process
             printf("[Uma conexão aberta]\n");
