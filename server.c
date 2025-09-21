@@ -194,6 +194,9 @@ int main (int argc, char **argv) {
                 case DISCONNECT:
                     // TODO
                     break;
+                case PINGREQ:
+                    // TODO 
+                    break;
                 default:
                     fprintf(stderr, "[Warning: packet type %d still not implemented]\n", recv.fixed_header.type);
             }

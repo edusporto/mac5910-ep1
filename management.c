@@ -15,7 +15,7 @@ int directory_exists(const char *path) {
     return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
 }
 
-void create_base_folder() {
+void create_base_folder(void) {
     // It should not exist - if it does, it was probably kept from an earlier execution.
     if (directory_exists(base_folder)) {
         if (rmdir(base_folder) == -1) {

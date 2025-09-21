@@ -1,5 +1,5 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -g -std=c99
+CC = gcc-15
+CFLAGS = -Wall -Wextra -g -std=c11 -pedantic
 LDFLAGS =
 
 # Target binary

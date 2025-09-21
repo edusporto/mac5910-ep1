@@ -28,25 +28,25 @@ typedef enum MqttControlType {
 } MqttControlType;
 
 /* === MQTT Control Packet flags === */
-#define MQTT_FLG_CONNECT 0b0000
-#define MQTT_FLG_CONNACK 0b0000
+#define MQTT_FLG_CONNECT 0x0
+#define MQTT_FLG_CONNACK 0x0
 typedef struct MqttFlgPublish {
     uint8_t retain : 1;
     uint8_t qos    : 2;
     uint8_t dup    : 1;
 } MqttFlgPublish;
-#define MQTT_FLG_PUBACK      0b0000
-#define MQTT_FLG_PUBREC      0b0000
-#define MQTT_FLG_PUBREL      0b0010
-#define MQTT_FLG_PUBCOMP     0b0000
-#define MQTT_FLG_SUBSCRIBE   0b0010
-#define MQTT_FLG_SUBACK      0b0000
-#define MQTT_FLG_UNSUBSCRIBE 0b0010
-#define MQTT_FLG_UNSUBACK    0b0000
-#define MQTT_FLG_PINGREQ     0b0000
-#define MQTT_FLG_PINGRESP    0b0000
-#define MQTT_FLG_DISCONNECT  0b0000
-#define MQTT_FLG_AUTH        0b0000
+#define MQTT_FLG_PUBACK      0x0
+#define MQTT_FLG_PUBREC      0x0
+#define MQTT_FLG_PUBREL      0x2
+#define MQTT_FLG_PUBCOMP     0x0
+#define MQTT_FLG_SUBSCRIBE   0x2
+#define MQTT_FLG_SUBACK      0x0
+#define MQTT_FLG_UNSUBSCRIBE 0x2
+#define MQTT_FLG_UNSUBACK    0x0
+#define MQTT_FLG_PINGREQ     0x0
+#define MQTT_FLG_PINGRESP    0x0
+#define MQTT_FLG_DISCONNECT  0x0
+#define MQTT_FLG_AUTH        0x0
 
 typedef enum MqttPropType {
     BYTE      = 0,
@@ -228,9 +228,20 @@ typedef union MqttVarHeader {
 
 /* = MQTT Payload */
 
-// TODO: treat each payload correctly
+/* We only treat the payloads we care about for this exercise */
+/* Doing the full MQTT implementation was taking up too much time... */
 
-// typedef MqttPay_Connect
+typedef struct MqttPay_Subscribe {
+    struct {
+        int a;
+    };
+} MqttPay_Subscribe;
+
+/* If we haven't implemented this payload, just store it as an array of byes */
+typedef struct MqttPay_Other {
+    ssize_t len;
+    uint8_t *content;
+} MqttPay_Other;
 
 typedef struct MqttPayload {
     ssize_t len;
@@ -277,6 +288,6 @@ void update_remaining_length(MqttControlPacket *packet);
 ssize_t write_control_packet(int fd, MqttControlPacket *packet);
 void destroy_control_packet(MqttControlPacket packet);
 
-MqttControlPacket create_connack();
+MqttControlPacket create_connack(void);
 
 #endif

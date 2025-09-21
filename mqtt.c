@@ -307,7 +307,8 @@ ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed
             break;
         case PUBLISH:
             bytes_read += read_string(fd, &(var_header->publish.topic_name));
-            if ((fixed_header.flags & 0b0110) > 0) {
+            /* note: 0x6 = 0b0110 */
+            if ((fixed_header.flags & 0x6) > 0) {
                 bytes_read += read_packet_identifier(fd, &(var_header->publish.packet_id));
             }
             bytes_read += read_var_int(fd, &(var_header->publish.props_len));
@@ -428,7 +429,8 @@ ssize_t write_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixe
             break;
         case PUBLISH:
             bytes_written += write_string(fd, &(var_header->publish.topic_name));
-            if ((fixed_header.flags & 0b0110) > 0) {
+            /* note: 0x6 = 0b0110 */
+            if ((fixed_header.flags & 0x6) > 0) {
                 bytes_written += write_packet_identifier(fd, &(var_header->publish.packet_id));
             }
             bytes_written += write_var_int(fd, &(var_header->publish.props_len));
@@ -657,7 +659,7 @@ void destroy_control_packet(MqttControlPacket packet) {
     free(packet.payload.content);
 }
 
-MqttControlPacket create_connack() {
+MqttControlPacket create_connack(void) {
     MqttFixedHeader fixed_header = {
         .type  = CONNACK,
         .flags = MQTT_FLG_CONNACK,
