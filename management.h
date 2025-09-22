@@ -2,12 +2,18 @@
 #define MANAGEMENT_H
 
 // Base folder to store topics and messages
-extern const char *base_folder;
+// TODO: moved to server.c
+// extern const char *base_folder;
 
 // Checks if a directory exists
 int directory_exists(const char *path);
 
-// Creates base folder to store topics and messages.
-void create_base_folder(void);
+int fresh_dir(const char *path);
+int ensure_dir(const char *path);
+int remove_dir(const char *path);
+
+int fresh_fifo(const char *path);
+int ensure_fifo(const char *path);
+int remove_fifo(const char *path);
 
 #endif

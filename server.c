@@ -53,6 +53,8 @@
 
 /* ========================================================= */
 
+const char *BASE_FOLDER = "/tmp/temp.mac5910.1.11796510/";
+
 int main (int argc, char **argv) {
     // Server listening socket
     int listenfd;
@@ -78,11 +80,6 @@ int main (int argc, char **argv) {
 
     /* ========================================================= */
     /* ================= Part of my solution =================== */
-
-    // Buffer to store paths within base folder.
-    char base_buffer[MAX_BASE_BUFFER + 1];
-
-    create_base_folder();
 
     /* ========================================================= */
 
@@ -136,6 +133,10 @@ int main (int argc, char **argv) {
             printf("[Uma conexão aberta]\n");
             close(listenfd);
 
+            // Buffer to store paths within base folder.
+            char base_buffer[MAX_BASE_BUFFER + 1];
+            fresh_dir(BASE_FOLDER);
+
             /* ========================================================= */
             /* ========================================================= */
             /*                         EP1 INÍCIO                        */
@@ -181,8 +182,21 @@ int main (int argc, char **argv) {
 
             switch ((MqttControlType)recv.fixed_header.type) {
                 case SUBSCRIBE:
-                    
-                    // TODO
+                    snprintf(base_buffer, MAX_BASE_BUFFER, "%s/%d", BASE_FOLDER, childpid);
+                    ensure_dir(base_buffer);
+                    for (ssize_t i = 0; i < recv.payload.subscribe.topic_amount; i++) {
+                        snprintf(
+                            base_buffer,
+                            MAX_BASE_BUFFER,
+                            "%s/%d/%s",
+                            BASE_FOLDER, childpid, recv.payload.subscribe.topics[i].str.val
+                        );
+                        int exists = ensure_fifo(base_buffer);
+                        if (!exists) {
+                            // start_listener()
+                        }
+                    }
+
                     break;
                 case UNSUBSCRIBE:
                     // TODO
@@ -218,6 +232,9 @@ int main (int argc, char **argv) {
             /*                         EP1 FIM                           */
             /* ========================================================= */
             /* ========================================================= */
+
+            snprintf(base_buffer, MAX_BASE_BUFFER, "%s/%d", base_buffer, childpid);
+            remove_dir(base_buffer);
 
             printf("[Uma conexão fechada]\n");
             exit(0);

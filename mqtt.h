@@ -208,7 +208,7 @@ typedef struct MqttVar_Auth {
     MqttProperty *props;
 } MqttVar_Auth;
 
-typedef union MqttVarHeader {
+typedef struct MqttVarHeader {
     MqttVar_Connect connect;
     MqttVar_Connack connack;
     MqttVar_Publish publish;
@@ -231,21 +231,27 @@ typedef union MqttVarHeader {
 /* We only treat the payloads we care about for this exercise */
 /* Doing the full MQTT implementation was taking up too much time... */
 
-typedef struct MqttPay_Subscribe {
-    struct {
-        int a;
-    };
-} MqttPay_Subscribe;
+struct StringWithOptions {
+    String str;
+    uint8_t options;
+};
+
+typedef struct MqttPayload_Subscribe {
+    struct StringWithOptions *topics;
+    /* note: this isn't sent */
+    ssize_t topic_amount;
+} MqttPayload_Subscribe;
 
 /* If we haven't implemented this payload, just store it as an array of byes */
-typedef struct MqttPay_Other {
+typedef struct MqttPayload_Other {
+    /* note: this is also used for implemented payloads, such as Subscribe */
     ssize_t len;
     uint8_t *content;
-} MqttPay_Other;
+} MqttPayload_Other;
 
-typedef struct MqttPayload {
-    ssize_t len;
-    uint8_t *content;
+typedef union MqttPayload {
+    MqttPayload_Subscribe subscribe;
+    MqttPayload_Other other;
 } MqttPayload;
 
 /* Full MQTT control packet */
@@ -282,6 +288,10 @@ void destroy_properties(MqttProperty *props, var_int len);
 ssize_t read_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed_header);
 ssize_t write_var_header(int fd, MqttVarHeader *var_header, MqttFixedHeader fixed_header);
 void destroy_var_header(MqttVarHeader var_header, MqttFixedHeader fixed_header);
+
+ssize_t read_payload(int fd, MqttPayload *payload, MqttFixedHeader fixed_header);
+ssize_t write_payload(int fd, MqttPayload *payload, MqttFixedHeader fixed_header);
+void destroy_payload(MqttPayload payload, MqttFixedHeader fixed_header);
 
 ssize_t read_control_packet(int fd, MqttControlPacket *packet);
 void update_remaining_length(MqttControlPacket *packet);

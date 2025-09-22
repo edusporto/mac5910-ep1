@@ -8,29 +8,98 @@
 #include "errors.h"
 #include "management.h"
 
-const char *base_folder = "/tmp/temp.mac5910.1.11796510/";
-
 int directory_exists(const char *path) {
     struct stat st;
     return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
 }
 
-void create_base_folder(void) {
-    // It should not exist - if it does, it was probably kept from an earlier execution.
-    if (directory_exists(base_folder)) {
-        if (rmdir(base_folder) == -1) {
-            fprintf(stderr, "[ERROR: could not delete %s]\n", base_folder);
-            exit(ERROR_BASE_FOLDER);
-        }
+int fresh_dir(const char *path) {
+    int existed = directory_exists(path);
 
-        if (mkdir(base_folder, 0744) == -1) {
-            fprintf(stderr, "[ERROR: could not create %s]\n", base_folder);
-            exit(ERROR_BASE_FOLDER);
-        }
-    } else {
-        if (mkdir(base_folder, 0744) == -1) {
-            fprintf(stderr, "[ERROR: could not create %s]\n", base_folder);
-            exit(ERROR_BASE_FOLDER);
+    if (existed) {
+        if (rmdir(path) == -1) {
+            fprintf(stderr, "[ERROR: Could not delete existing directory '%s']\n", path);
+            exit(ERROR_SERVER);
         }
     }
+    if (mkdir(path, 0755) == -1) {
+        fprintf(stderr, "[ERROR: Could not create directory '%s']\n", path);
+        exit(ERROR_SERVER);
+    }
+    
+    return existed;
+}
+
+int ensure_dir(const char *path) {
+    int existed = directory_exists(path);
+
+    if (!existed) {
+        if (mkdir(path, 0755) == -1) {
+            fprintf(stderr, "[ERROR: Could not create directory '%s']\n", path);
+            exit(ERROR_SERVER);
+        }
+    }
+    
+    return existed;
+}
+
+int remove_dir(const char *path) {
+    int existed = directory_exists(path);
+
+    if (existed) {
+        if (rmdir(path) == -1) {
+            fprintf(stderr, "[ERROR: Could not remove directory '%s'] - ", path);
+            exit(ERROR_SERVER);
+        }
+    }
+
+    return existed;
+}
+
+int fifo_exists(const char *path) {
+    struct stat st;
+    return (stat(path, &st) == 0 && S_ISFIFO(st.st_mode));
+}
+
+int fresh_fifo(const char *path) {
+    int existed = fifo_exists(path);
+
+    if (existed) {
+        if (unlink(path) == -1) {
+            fprintf(stderr, "[ERROR: Could not delete existing FIFO '%s']\n", path);
+            exit(ERROR_SERVER);
+        }
+    }
+    if (mkfifo(path, 0644) == -1) {
+        fprintf(stderr, "[ERROR: Could not create FIFO '%s']\n", path);
+        exit(ERROR_SERVER);
+    }
+    
+    return existed;
+}
+
+int ensure_fifo(const char *path) {
+    int existed = fifo_exists(path);
+
+    if (!existed) {
+        if (mkfifo(path, 0666) == -1) {
+            fprintf(stderr, "[ERROR: Could not create FIFO '%s']\n", path);
+            exit(ERROR_SERVER);
+        }
+    }
+    
+    return existed;
+}
+
+int remove_fifo(const char *path) {
+    int existed = fifo_exists(path);
+
+    if (existed) {
+        if (unlink(path) == -1) {
+            fprintf(stderr, "[ERROR: Could not remove FIFO '%s']\n", path);
+            exit(ERROR_SERVER);
+        }
+    }
+
+    return existed;
 }

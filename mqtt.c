@@ -568,6 +568,61 @@ void destroy_var_header(MqttVarHeader var_header, MqttFixedHeader fixed_header) 
     }
 }
 
+ssize_t read_payload(int fd, MqttPayload *payload, MqttFixedHeader fixed_header) {
+    ssize_t bytes_read = 0;
+    payload->subscribe.topic_amount = 0;
+
+    /* kind of a hack... */
+    ssize_t byte_len = payload->other.len;
+    switch (fixed_header.type) {
+        case SUBSCRIBE:
+            payload->subscribe.topics = (struct StringWithOptions*)malloc(byte_len);
+            if (!payload->subscribe.topics) {
+                perror("[Pipe creation for length calculation failed]\n"); exit(ERROR_SERVER);
+            }
+            size_t i = 0;
+            while (bytes_read < byte_len) {
+                bytes_read += read_string(fd, &(payload->subscribe.topics[i].str));
+                bytes_read += read_uint8(fd, &(payload->subscribe.topics[i].options));
+                payload->subscribe.topic_amount += 1;
+                i += 1;
+            }
+            break;
+        default:
+            payload->other.content = (uint8_t*)malloc(byte_len * sizeof(uint8_t));
+            bytes_read += read_many(fd, payload->other.content, byte_len);
+    }
+
+    return bytes_read;
+}
+
+ssize_t write_payload(int fd, MqttPayload *payload, MqttFixedHeader fixed_header) {
+    ssize_t bytes_written = 0;
+
+    switch (fixed_header.type) {
+        case SUBSCRIBE:
+            fprintf(stderr, "[Writing SUBSCRIBE payloads not implemented.]\n");
+            exit(ERROR_SERVER);
+            break;
+        default:
+            if (payload->other.len > 0) {
+                bytes_written += write_many(fd, payload->other.content, payload->other.len);
+            }
+    }
+
+    return bytes_written;
+}
+
+void destroy_payload(MqttPayload payload, MqttFixedHeader fixed_header) {
+    switch (fixed_header.type) {
+        case SUBSCRIBE:
+            free(payload.subscribe.topics);
+            break;
+        default:
+            free(payload.other.content);
+    }
+}
+
 ssize_t read_control_packet(int fd, MqttControlPacket *packet) {
     ssize_t bytes_read = 0;
 
@@ -590,10 +645,10 @@ ssize_t read_control_packet(int fd, MqttControlPacket *packet) {
     // === MQTT Control Packet Payload
 
     MqttPayload payload = { 0 };
-    payload.len = (ssize_t)header.len - remaining_read;
+    /* This is kind of a hack. It would be better not to do this. */
+    payload.other.len = (ssize_t)header.len - remaining_read;
 
-    payload.content = (uint8_t*)malloc(payload.len * sizeof(uint8_t));
-    bytes_read += read_many(fd, payload.content, payload.len);
+    bytes_read += read_payload(fd, &payload, header);
 
     packet->fixed_header = header;
     packet->var_header = var_header;
@@ -615,7 +670,7 @@ void update_remaining_length(MqttControlPacket *packet) {
 
     // Write the variable header to the write-end of the pipe.
     remaining_length += write_var_header(pipe_fds[1], &packet->var_header, packet->fixed_header);
-    remaining_length += packet->payload.len;
+    remaining_length += write_payload(pipe_fds[1], &packet->payload, packet->fixed_header);
 
     // Close both ends of the pipe as we are done with them.
     close(pipe_fds[0]);
@@ -642,21 +697,14 @@ ssize_t write_control_packet(int fd, MqttControlPacket *packet) {
 
     // === Payload
 
-    if (packet->payload.len > 0) {
-        ssize_t payload_bytes_written = write_many(fd, packet->payload.content, packet->payload.len);
-        if (payload_bytes_written != packet->payload.len) {
-            perror("[Socket writing failed for payload]\n");
-            exit(ERROR_WRITE_FAILED);
-        }
-        total_bytes_written += payload_bytes_written;
-    }
+    total_bytes_written += write_payload(fd, &packet->payload, packet->fixed_header);
 
     return total_bytes_written;
 }
 
 void destroy_control_packet(MqttControlPacket packet) {
     destroy_var_header(packet.var_header, packet.fixed_header);
-    free(packet.payload.content);
+    destroy_payload(packet.payload, packet.fixed_header);
 }
 
 MqttControlPacket create_connack(void) {
@@ -673,10 +721,10 @@ MqttControlPacket create_connack(void) {
         .props       = NULL
     }};
 
-    MqttPayload payload = {
+    MqttPayload payload = { .other = {
         .len     = 0,
         .content = NULL
-    };
+    }};
 
     MqttControlPacket packet = {
         .fixed_header = fixed_header,
