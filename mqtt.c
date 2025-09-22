@@ -570,22 +570,28 @@ void destroy_var_header(MqttVarHeader var_header, MqttFixedHeader fixed_header) 
 
 ssize_t read_payload(int fd, MqttPayload *payload, MqttFixedHeader fixed_header) {
     ssize_t bytes_read = 0;
-    payload->subscribe.topic_amount = 0;
 
     /* kind of a hack... */
     ssize_t byte_len = payload->other.len;
     switch (fixed_header.type) {
         case SUBSCRIBE:
-            payload->subscribe.topics = (struct StringWithOptions*)malloc(byte_len);
-            if (!payload->subscribe.topics) {
-                perror("[Pipe creation for length calculation failed]\n"); exit(ERROR_SERVER);
-            }
-            size_t i = 0;
+            payload->subscribe.topic_amount = 0;
+            payload->subscribe.topics = NULL;
+            
             while (bytes_read < byte_len) {
+                payload->subscribe.topic_amount++;
+                payload->subscribe.topics = (struct StringWithOptions*)realloc(
+                    payload->subscribe.topics,
+                    payload->subscribe.topic_amount * sizeof(struct StringWithOptions)
+                );
+                if (!payload->subscribe.topics) {
+                    perror("[Couldn't reallocate memory for topics]\n");
+                    exit(ERROR_SERVER);
+                }
+
+                size_t i = payload->subscribe.topic_amount - 1;
                 bytes_read += read_string(fd, &(payload->subscribe.topics[i].str));
                 bytes_read += read_uint8(fd, &(payload->subscribe.topics[i].options));
-                payload->subscribe.topic_amount += 1;
-                i += 1;
             }
             break;
         default:
@@ -616,6 +622,9 @@ ssize_t write_payload(int fd, MqttPayload *payload, MqttFixedHeader fixed_header
 void destroy_payload(MqttPayload payload, MqttFixedHeader fixed_header) {
     switch (fixed_header.type) {
         case SUBSCRIBE:
+            for (ssize_t i = 0; i < payload.subscribe.topic_amount; i++) {
+                destroy_string(payload.subscribe.topics[i].str);
+            }
             free(payload.subscribe.topics);
             break;
         default:

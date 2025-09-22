@@ -13,11 +13,18 @@ int directory_exists(const char *path) {
     return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
 }
 
+/* Helper function. Not in `management.h` */
+int internal_remove_dir(const char *path) {
+    char command[1024];
+    snprintf(command, sizeof(command), "rm -rf \"%s\"", path);
+    return system(command);
+}
+
 int fresh_dir(const char *path) {
     int existed = directory_exists(path);
 
     if (existed) {
-        if (rmdir(path) == -1) {
+        if (internal_remove_dir(path) != 0) {
             fprintf(stderr, "[ERROR: Could not delete existing directory '%s']\n", path);
             exit(ERROR_SERVER);
         }
@@ -47,8 +54,8 @@ int remove_dir(const char *path) {
     int existed = directory_exists(path);
 
     if (existed) {
-        if (rmdir(path) == -1) {
-            fprintf(stderr, "[ERROR: Could not remove directory '%s'] - ", path);
+        if (internal_remove_dir(path) != 0) {
+            fprintf(stderr, "[ERROR: Could not remove directory '%s']\n", path);
             exit(ERROR_SERVER);
         }
     }

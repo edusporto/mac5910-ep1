@@ -1,10 +1,6 @@
 #ifndef MANAGEMENT_H
 #define MANAGEMENT_H
 
-// Base folder to store topics and messages
-// TODO: moved to server.c
-// extern const char *base_folder;
-
 // Checks if a directory exists
 int directory_exists(const char *path);
 

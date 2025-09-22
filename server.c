@@ -39,6 +39,9 @@
 #include <arpa/inet.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/fcntl.h>
+#include <signal.h>
 
 #include "errors.h"
 #include "management.h"
@@ -53,7 +56,89 @@
 
 /* ========================================================= */
 
-const char *BASE_FOLDER = "/tmp/temp.mac5910.1.11796510/";
+/* Base folder to store topics and messages */
+const char *BASE_FOLDER = "/tmp/temp.mac5910.1.11796510";
+
+void catch_int(int dummy) {
+    (void)dummy;
+    remove_dir(BASE_FOLDER);
+    exit(0);
+}
+
+void treat_subscribe(int connfd, int user_id, MqttControlPacket packet) {
+    char file_name_buffer[MAX_BASE_BUFFER + 1];
+
+    snprintf(file_name_buffer, MAX_BASE_BUFFER, "%s/%d", BASE_FOLDER, user_id);
+    ensure_dir(file_name_buffer);
+
+    for (ssize_t i = 0; i < packet.payload.subscribe.topic_amount; i++) {
+        /* Check if user is already subscribed to this topic */
+        snprintf(
+            file_name_buffer,
+            MAX_BASE_BUFFER,
+            "%s/%d/%s",
+            BASE_FOLDER, user_id, packet.payload.subscribe.topics[i].str.val
+        );
+        if (ensure_fifo(file_name_buffer)) {
+            /* the pipe already existed, another process is reading it */
+            continue;
+        }
+
+        int pid;
+        if ((pid = fork()) == 0) {
+            /* child process, read the buffer */
+            int pipe_fd = open(file_name_buffer, O_RDONLY | O_NONBLOCK);
+            if (pipe_fd == -1) {
+                fprintf(stderr, "[%d failed to open pipe %s]\n", pipe_fd, file_name_buffer);
+                exit(ERROR_SERVER);
+            }
+
+            for (;;) {
+                fd_set read_fds;
+                FD_ZERO(&read_fds);
+                FD_SET(pipe_fd, &read_fds);
+
+                /* timeout checking if pipe still exists */
+                struct timeval timeout;
+                timeout.tv_sec = 0;
+                timeout.tv_usec = 50000; /* 0.05s */
+
+                int ret = select(pipe_fd + 1, &read_fds, NULL, NULL, &timeout);
+
+                if (ret > 0) {
+                    /* data available */
+                    char msg_buffer[MAX_BASE_BUFFER + 1];
+                    ssize_t bytes_read = read(pipe_fd, msg_buffer, sizeof(msg_buffer));
+                    if (bytes_read <= 0) {
+                        /* error or pipe closed, don't care */
+                        break;
+                    }
+                    msg_buffer[bytes_read] = '\0';
+                    /* TODO: send publish packet */
+                    printf("got: %s", msg_buffer);
+                } else if (ret == 0) {
+                    /* timeout occurred */
+                    /* check if pipe still exists */
+                    struct stat file_stat;
+                    if (stat(file_name_buffer, &file_stat) == -1) {
+                        /* pipe deleted */
+                        break;
+                    }
+                } else {
+                    /* error */
+                    exit(EXIT_SUCCESS);
+                }
+            }
+
+            close(pipe_fd);
+            close(connfd);
+        }
+    }
+}
+
+void treat_publish(int connfd, int user_id, MqttControlPacket packet) {
+    
+}
 
 int main (int argc, char **argv) {
     // Server listening socket
@@ -83,10 +168,21 @@ int main (int argc, char **argv) {
 
     /* ========================================================= */
 
+    signal(SIGINT, catch_int);
+    fresh_dir(BASE_FOLDER);
+    sleep(1); /* wait for orphan children to die */
+
     // IPv4, TCP, Internet socket creation
     if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket :(\n");
         exit(2);
+    }
+
+    /* Allow socket to be created when old TCP connection is in wait state */
+    int optval = 1;
+    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
     }
 
     // Socket binding.
@@ -131,11 +227,7 @@ int main (int argc, char **argv) {
 
             // Child process
             printf("[Uma conexão aberta]\n");
-            close(listenfd);
-
-            // Buffer to store paths within base folder.
-            char base_buffer[MAX_BASE_BUFFER + 1];
-            fresh_dir(BASE_FOLDER);
+            // close(listenfd); // TODO: uncomment
 
             /* ========================================================= */
             /* ========================================================= */
@@ -182,21 +274,7 @@ int main (int argc, char **argv) {
 
             switch ((MqttControlType)recv.fixed_header.type) {
                 case SUBSCRIBE:
-                    snprintf(base_buffer, MAX_BASE_BUFFER, "%s/%d", BASE_FOLDER, childpid);
-                    ensure_dir(base_buffer);
-                    for (ssize_t i = 0; i < recv.payload.subscribe.topic_amount; i++) {
-                        snprintf(
-                            base_buffer,
-                            MAX_BASE_BUFFER,
-                            "%s/%d/%s",
-                            BASE_FOLDER, childpid, recv.payload.subscribe.topics[i].str.val
-                        );
-                        int exists = ensure_fifo(base_buffer);
-                        if (!exists) {
-                            // start_listener()
-                        }
-                    }
-
+                    treat_subscribe(connfd, childpid, recv);
                     break;
                 case UNSUBSCRIBE:
                     // TODO
@@ -212,7 +290,7 @@ int main (int argc, char **argv) {
                     // TODO 
                     break;
                 default:
-                    fprintf(stderr, "[Warning: packet type %d still not implemented]\n", recv.fixed_header.type);
+                    fprintf(stderr, "[Warning: packet type %d not implemented]\n", recv.fixed_header.type);
             }
 
             destroy_control_packet(recv);
@@ -233,15 +311,15 @@ int main (int argc, char **argv) {
             /* ========================================================= */
             /* ========================================================= */
 
-            snprintf(base_buffer, MAX_BASE_BUFFER, "%s/%d", base_buffer, childpid);
-            remove_dir(base_buffer);
-
             printf("[Uma conexão fechada]\n");
-            exit(0);
+            // exit(0);
         // }
         // else {
         //     close(connfd);
         // }
+        // TODO: remove
+        close(connfd);
     }
+    remove_dir(BASE_FOLDER);
     exit(0);
 }
