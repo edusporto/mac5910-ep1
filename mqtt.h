@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #ifndef MQTT_H
 #define MQTT_H
 
