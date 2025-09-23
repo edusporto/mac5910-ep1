@@ -885,7 +885,7 @@ MqttControlPacket create_pingresp(void) {
         .len = 0 /* updated by the send function */
     };
 
-    MqttVarHeader var_header = { .pingreq = {} };
+    MqttVarHeader var_header = { 0 };
 
     MqttPayload payload = { .other = {
         .content = NULL,

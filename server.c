@@ -52,7 +52,7 @@
 #define MAXDATASIZE 100
 #define MAXLINE 4096
 
-#define SERVER_PORT 1883
+#define DEFAULT_SERVER_PORT 1883
 #define MAX_BASE_BUFFER 1024
 #define MAX_MSG_SIZE 1024*1024
 
@@ -248,6 +248,19 @@ void treat_pingreq(int connfd) {
     write_control_packet(connfd, &send);
 }
 
+void treat_disconnect(int user_id) {
+    printf("[User %d sent DISCONNECT. Cleaning up resources.]\n", user_id);
+
+    char user_dir_path[MAX_BASE_BUFFER + 1];
+    snprintf(user_dir_path, sizeof(user_dir_path), "%s/%d", BASE_FOLDER, user_id);
+
+    /* Remove the user's directory. This closes all user FIFOs, which should
+     * stop all forked children for `user_id`. */
+    remove_dir(user_dir_path);
+
+    /* The server does not need to return a response. */
+}
+
 int main (int argc, char **argv) {
     // Server listening socket
     int listenfd;
@@ -259,10 +272,6 @@ int main (int argc, char **argv) {
     struct sockaddr_in servaddr;
     // Fork return
     pid_t childpid;
-    // Stores lines received by a client
-    char recvline[MAXLINE + 1];
-    // Stores size of lines read by client
-    ssize_t n;
    
     // TODO: remove
     // if (argc != 2) {
@@ -270,6 +279,12 @@ int main (int argc, char **argv) {
     //     fprintf(stderr,"Vai rodar um servidor de echo na porta <Porta> TCP\n");
     //     exit(1);
     // }
+    uint16_t server_port;
+    if (argc >= 2) {
+        server_port = atoi(argv[1]);
+    } else {
+        server_port = DEFAULT_SERVER_PORT;
+    }
 
     /* ========================================================= */
     /* ================= Part of my solution =================== */
@@ -301,7 +316,7 @@ int main (int argc, char **argv) {
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     // TODO: fix
     // servaddr.sin_port        = htons(atoi(argv[1]));
-    servaddr.sin_port        = htons(SERVER_PORT);
+    servaddr.sin_port        = htons(DEFAULT_SERVER_PORT);
     if (bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
         perror("bind :(\n");
         exit(3);
@@ -392,7 +407,7 @@ int main (int argc, char **argv) {
                     treat_publish(connfd, childpid, recv);
                     break;
                 case DISCONNECT:
-                    // TODO
+                    treat_disconnect(childpid);
                     break;
                 case PINGREQ:
                     treat_pingreq(connfd);
