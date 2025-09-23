@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <unistd.h>
+#include <stdint.h>
 
 #include "mqtt.h"
 #include "sockets.h"
