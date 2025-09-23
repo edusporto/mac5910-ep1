@@ -743,3 +743,90 @@ MqttControlPacket create_connack(void) {
 
     return packet;
 }
+
+/* NOTE: probably shouldn't call `destroy_control_packet` on this */
+MqttControlPacket create_publish(String topic_name, char *msg, size_t msg_len) {
+    MqttFixedHeader fixed_header = {
+        .type  = PUBLISH,
+        .flags = MQTT_FLG_PUBLISH,
+        .len   = 0 /* updated by the send function */
+    };
+
+    MqttVarHeader var_header = { .publish = {
+        .packet_id = 0,
+        .topic_name = topic_name,
+        .props_len = 0,
+        .props = NULL
+    }};
+
+    MqttPayload payload = { .other = {
+        .content = (uint8_t*)msg,
+        .len     = msg_len
+    }};
+
+    MqttControlPacket packet = {
+        .fixed_header = fixed_header,
+        .var_header = var_header,
+        .payload = payload
+    };
+
+    return packet;
+}
+
+MqttControlPacket create_suback(MqttControlPacket subscribe) {
+    MqttFixedHeader fixed_header = {
+        .type  = SUBACK,
+        .flags = MQTT_FLG_SUBACK,
+        .len   = 0 /* updated by the send function */
+    };
+
+    MqttVarHeader var_header = { .suback = {
+        .packet_id = subscribe.var_header.subscribe.packet_id,
+        .props_len = 0,
+        .props     = NULL
+    }};
+
+    size_t content_len = sizeof(uint8_t) * subscribe.payload.subscribe.topic_amount;
+    uint8_t *content = (uint8_t*)malloc(content_len);
+
+    for (size_t i = 0; i < content_len; i++) {
+        /* Granted QoS 0 */
+        content[i] = 0x0;
+    }
+
+    MqttPayload payload = { .other = {
+        .content = content,
+        .len = content_len
+    }};
+
+    MqttControlPacket packet = {
+        .fixed_header = fixed_header,
+        .var_header = var_header,
+        .payload = payload
+    };
+
+    return packet;
+}
+
+MqttControlPacket create_pingresp(void) {
+    MqttFixedHeader fixed_header = {
+        .type = PINGRESP,
+        .flags = MQTT_FLG_PINGRESP,
+        .len = 0 /* updated by the send function */
+    };
+
+    MqttVarHeader var_header = { .pingreq = {} };
+
+    MqttPayload payload = { .other = {
+        .content = NULL,
+        .len = 0
+    }};
+
+    MqttControlPacket packet = {
+        .fixed_header = fixed_header,
+        .var_header = var_header,
+        .payload = payload
+    };
+
+    return packet;
+}

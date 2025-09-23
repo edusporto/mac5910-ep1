@@ -35,6 +35,8 @@ typedef struct MqttFlgPublish {
     uint8_t qos    : 2;
     uint8_t dup    : 1;
 } MqttFlgPublish;
+/* in our implementation, don't care about PUBLISH details */
+#define MQTT_FLG_PUBLISH     0x0
 #define MQTT_FLG_PUBACK      0x0
 #define MQTT_FLG_PUBREC      0x0
 #define MQTT_FLG_PUBREL      0x2
@@ -299,5 +301,8 @@ ssize_t write_control_packet(int fd, MqttControlPacket *packet);
 void destroy_control_packet(MqttControlPacket packet);
 
 MqttControlPacket create_connack(void);
+MqttControlPacket create_publish(String topic_name, char *msg, size_t msg_len);
+MqttControlPacket create_suback(MqttControlPacket subscribe);
+MqttControlPacket create_pingresp(void);
 
 #endif
