@@ -106,7 +106,7 @@ void treat_subscribe(int connfd, int user_id, MqttControlPacket packet) {
             }
 
             close(pipe_fd);
-            close(connfd);
+            // close(connfd);
             remove_fifo(file_name_buffer);
             exit(0);
         } else { /* parent process */ }

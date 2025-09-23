@@ -167,6 +167,8 @@ int main (int argc, char **argv) {
             destroy_control_packet(send);
 
             for (;;) {
+                memset(&recv, 0, sizeof(MqttControlPacket)); 
+
                 read_control_packet(connfd, &recv);
 
                 switch ((MqttControlType)recv.fixed_header.type) {
@@ -204,8 +206,6 @@ int main (int argc, char **argv) {
         } else {
             close(connfd);
         }
-        // TODO: remove
-        close(connfd);
     }
     remove_dir(BASE_FOLDER);
     exit(0);
