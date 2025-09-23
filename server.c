@@ -163,15 +163,6 @@ int main (int argc, char **argv) {
             for (;;) {
                 int stop = 0;
 
-                char buffer[1];
-                int result = recv(connfd, buffer, sizeof(buffer), MSG_PEEK | MSG_DONTWAIT);
-                printf("%d\n", result);
-                if (result == 0) {
-                    break;
-                } else if (result < 0 && (errno != EAGAIN && errno != EWOULDBLOCK)) {
-                    break;
-                }
-
                 memset(&received, 0, sizeof(MqttControlPacket)); 
 
                 /* This can fail with a weird message if the client
@@ -189,7 +180,22 @@ int main (int argc, char **argv) {
                     case PUBLISH:
                         /* We only accept PUBLISH with QoS = 0 */
                         treat_publish(received);
-                        // stop = 1;
+                        
+                        // I don't really understand why, but if the next two bytes are
+                        // [0xE0, 0x00], we got a disconnect request.
+                        // Peek at the next two bytes without consuming them.
+                        unsigned char peek_buffer[2];
+                        ssize_t peek_result = recv(connfd, peek_buffer, 2, MSG_PEEK);
+                        if (peek_result == 2) {
+                            if (peek_buffer[0] == 0xE0 && peek_buffer[1] == 0x00) {
+                                // disconnect request
+                                stop = 1;
+                            } else {
+                                // printf("[Debug] Next bytes are 0x%02x 0x%02x\n", 
+                                //     peek_buffer[0], peek_buffer[1]);
+                            }
+                        }
+                        
                         break;
                     case DISCONNECT:
                         treat_disconnect(mypid);
