@@ -50,12 +50,7 @@ int main (int argc, char **argv) {
     // Fork return
     pid_t childpid;
    
-    // TODO: remove
-    // if (argc != 2) {
-    //     fprintf(stderr,"Uso: %s <Porta>\n", argv[0]);
-    //     fprintf(stderr,"Vai rodar um servidor de echo na porta <Porta> TCP\n");
-    //     exit(1);
-    // }
+    // Choose server port
     uint16_t server_port;
     if (argc >= 2) {
         server_port = atoi(argv[1]);
@@ -63,11 +58,7 @@ int main (int argc, char **argv) {
         server_port = DEFAULT_SERVER_PORT;
     }
 
-    /* ========================================================= */
-    /* ================= Part of my solution =================== */
-
-    /* ========================================================= */
-
+    /* Setup: prepare FIFO directory, wait for previous children to _stop_ */
     signal(SIGINT, catch_int);
     fresh_dir(BASE_FOLDER);
     sleep(1); /* wait for orphan children to die */
@@ -103,8 +94,8 @@ int main (int argc, char **argv) {
         exit(4);
     }
 
-    printf("[Servidor no ar. Aguardando conexões na porta %s]\n",argv[1]);
-    printf("[Para finalizar, pressione CTRL+c ou rode um kill ou killall]\n");
+    printf("[Server up. Waiting for connections in port %d]\n", server_port);
+    printf("[To stop the server, do CTRL+C]\n");
    
     /* ===================== Server loop ======================= */
 	for (;;) {
@@ -130,7 +121,7 @@ int main (int argc, char **argv) {
             /* ========================================================= */
 
             MqttControlPacket recv = { 0 };
-            MqttControlPacket send = { 0 };
+            MqttControlPacket connack = { 0 };
 
             read_control_packet(connfd, &recv);
 
@@ -156,19 +147,27 @@ int main (int argc, char **argv) {
             }
             */
 
+            /* First packet should be CONNECT */
             if (recv.fixed_header.type != CONNECT) {
                 fprintf(stderr, "[Got invalid connection, probably not MQTT]\n");
                 exit(ERROR_CLIENT);
             }
             destroy_control_packet(recv);
         
-            send = create_connack();
-            write_control_packet(connfd, &send);
-            destroy_control_packet(send);
+            /* Answer CONNECT with CONNACK */
+            connack = create_connack();
+            write_control_packet(connfd, &connack);
+            destroy_control_packet(connack);
 
+            /* Now, we treat any other packets this client may send */
             for (;;) {
+                int stop = 0;
+
                 memset(&recv, 0, sizeof(MqttControlPacket)); 
 
+                /* This can fail with a weird message if the client
+                 * suddenly closes the connection.
+                 * The broker will still work, so won't fix for now. */
                 read_control_packet(connfd, &recv);
 
                 switch ((MqttControlType)recv.fixed_header.type) {
@@ -181,9 +180,11 @@ int main (int argc, char **argv) {
                     case PUBLISH:
                         /* We only accept PUBLISH with QoS = 0 */
                         treat_publish(recv);
+                        stop = 1;
                         break;
                     case DISCONNECT:
                         treat_disconnect(mypid);
+                        stop = 1;
                         break;
                     case PINGREQ:
                         treat_pingreq(connfd);
@@ -193,11 +194,13 @@ int main (int argc, char **argv) {
                 }
 
                 destroy_control_packet(recv);
+
+                if (stop) { break; }
             }
 
             /* ========================================================= */
             /* ========================================================= */
-            /*                         EP1 FIM                           */
+            /*                         EP1 END                           */
             /* ========================================================= */
             /* ========================================================= */
 
@@ -207,6 +210,8 @@ int main (int argc, char **argv) {
             close(connfd);
         }
     }
+
+    /* I don't think the program can get here */
     remove_dir(BASE_FOLDER);
     exit(0);
 }

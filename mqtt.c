@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #include "mqtt.h"
-#include "sockets.h"
+#include "io.h"
 
 // Read a Variable Byte Integer from a file descriptor.
 ssize_t read_var_int(int fd, uint32_t *val) {
@@ -44,6 +44,9 @@ ssize_t read_binary_data(int fd, BinaryData *data) {
     bytes_read += read_uint16(fd, &(data->len));
 
     data->bytes = (uint8_t*)malloc(data->len * sizeof(uint8_t));
+    // we don't have to do this byte by byte, but when I tried to
+    // change it it failed catastrophically... better leave as is...
+    // same for the others
     for (uint32_t i = 0; i < data->len; i++) {
         bytes_read += read_uint8(fd, &(data->bytes[i]));
     }

@@ -6,11 +6,11 @@ LDFLAGS =
 TARGET = server
 
 # Source files
-SRCS = server.c mqtt.c sockets.c management.c handlers.c
+SRCS = server.c mqtt.c io.c management.c handlers.c
 OBJS = $(SRCS:.c=.o)
 
 # Header files for dependency tracking
-HEADERS = mqtt.h sockets.h errors.h management.h handlers.h
+HEADERS = mqtt.h io.h errors.h management.h handlers.h
 
 # Default target
 all: $(TARGET)
