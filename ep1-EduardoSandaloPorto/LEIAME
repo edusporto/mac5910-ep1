@@ -1,0 +1,53 @@
+Implementação simples de um broker de MQTT
+
+Este diretório contêm uma implementação simples de um broker MQTT na versão 5
+do protocolo. O trabalho foi desenvolvido por Eduardo Sandalo Porto como parte
+da disciplina MAC5910 em 2025, oferecida pelo professor Daniel Macêdo Batista
+no Instituto de Matemática e Estatística da Universidade de São Paulo.
+
+Para executar o servidor, basta:
+1. Compilá-lo com `make` (necessita o compilador GCC)
+2. Executá-lo com `./server`.
+
+Um broker de MQTT começará a executar na linha de comando. Por padrão, a porta
+1883 é escolhida, mas outra porta pode ser escolhida passando como parâmetro
+para o comando. Por exemplo, `./server 17170` inicia o servidor na porta 17170.
+
+O servidor inicia um loop que recebe pedidos de conexão TCP. Cada conexão
+recebida causará a bifurcação em um processo filho, que tratará a conexão, e o
+pai que continuará escutando por conexões.
+
+O processo filho tentará ler um pacote CONNECT do MQTT. Caso falhe, ou receba
+algo entendido como não sendo parte do protocolo MQTT, a conexão é finalizada.
+Caso tenha sucesso, responde com um CONNACK e inicia outro loop.
+
+Este loop é capaz de tratar 5 possíveis pacotes recebidos: (1) SUBSCRIBE,
+(2) UNSUBSCRIBE, (3) PUBLISH, (4) DISCONNECT, (5) PINGREQ.
+
+1. SUBSCRIBE
+Este pacote pede a inscrição do cliente em 1 ou mais tópicos. Ao receber um
+pedido de inscrição, o broker cria um diretório interno com o ID de processo
+referente a este cliente, e criará um _pipe_ FIFO para cada tópico que tiver
+se inscrito. Estes _pipes_ serão vigiados por um outro processo filho, que,
+ao receber dados, irá repassá-los ao cliente. Este processo também verificará
+periodicamente se seu _pipe_ ainda existe. A conexão do processo pai continuará
+ativa, para que o cliente possa enviar UNSUBSCRIBE, PUBLISH, DISCONNECT, ou
+PINGREQ.
+
+2. UNSUBSCRIBE
+Este pacote pede a remoção da inscrição do cliente em 1 ou mais tópicos. O
+broker irá apagar os _pipes_ relacionados a cada um dos tópicos selecionados.
+A conexão continuará ativa.
+
+3. PUBLISH
+Este pacote pede a publicação de uma mensagem para um tópico. O broker irá
+procurar todos os _pipes_ com o nome do tópico, e enviar a mensagem para cada
+um deles. O envio deste pacote encerra uma conexão.
+
+4. DISCONNECT
+Este pacote pede a finalização de uma conexão. O broker irá finalizar a conexão
+e realizar uma limpeza dos arquivos gerados.
+
+5. PINGREQ
+Este pacote verifica se o servidor ainda está disponível. O servidor sempre
+responderá com PINGRESP. A conexão continuará viva.
