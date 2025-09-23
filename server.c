@@ -166,7 +166,33 @@ void treat_subscribe(int connfd, int user_id, MqttControlPacket packet) {
 }
 
 void treat_unsubscribe(int connfd, int user_id, MqttControlPacket packet) {
-    
+    char file_name_buffer[MAX_BASE_BUFFER + 1];
+
+    for (ssize_t i = 0; i < packet.payload.unsubscribe.topic_amount; i++) {
+        snprintf(
+            file_name_buffer,
+            MAX_BASE_BUFFER,
+            "%s/%d/%s",
+            BASE_FOLDER, user_id, packet.payload.unsubscribe.topics[i].val
+        );
+
+        /* Delete FIFO, making child processes exit */
+        if (remove_fifo(file_name_buffer)) {
+            printf("[User %d unsubscribed from topic: %s]\n", user_id, packet.payload.unsubscribe.topics[i].val);
+        } else {
+            // This isn't a critical error; the user might be unsubscribing from a non-existent topic.
+            fprintf(stderr,
+                "[Warning: User %d tried to unsubscribe from non-existent topic: %s]\n",
+                user_id,
+                packet.payload.unsubscribe.topics[i].val
+            );
+        }
+    }
+
+    /* Send UNSUBACK */
+    MqttControlPacket send = create_unsuback(packet);
+    write_control_packet(connfd, &send);
+    destroy_control_packet(send);
 }
 
 void treat_publish(int connfd, int user_id, MqttControlPacket packet) {

@@ -244,6 +244,11 @@ typedef struct MqttPayload_Subscribe {
     ssize_t topic_amount;
 } MqttPayload_Subscribe;
 
+typedef struct MqttPayload_Unsubscribe {
+    String *topics;
+    ssize_t topic_amount;
+} MqttPayload_Unsubscribe;
+
 /* If we haven't implemented this payload, just store it as an array of byes */
 typedef struct MqttPayload_Other {
     /* note: this is also used for implemented payloads, such as Subscribe */
@@ -253,6 +258,7 @@ typedef struct MqttPayload_Other {
 
 typedef union MqttPayload {
     MqttPayload_Subscribe subscribe;
+    MqttPayload_Unsubscribe unsubscribe;
     MqttPayload_Other other;
 } MqttPayload;
 
@@ -303,6 +309,7 @@ void destroy_control_packet(MqttControlPacket packet);
 MqttControlPacket create_connack(void);
 MqttControlPacket create_publish(String topic_name, char *msg, size_t msg_len);
 MqttControlPacket create_suback(MqttControlPacket subscribe);
+MqttControlPacket create_unsuback(MqttControlPacket unsubscribe);
 MqttControlPacket create_pingresp(void);
 
 #endif

@@ -594,6 +594,25 @@ ssize_t read_payload(int fd, MqttPayload *payload, MqttFixedHeader fixed_header)
                 bytes_read += read_uint8(fd, &(payload->subscribe.topics[i].options));
             }
             break;
+        case UNSUBSCRIBE:
+            payload->unsubscribe.topic_amount = 0;
+            payload->unsubscribe.topics = NULL;
+
+            while (bytes_read < byte_len) {
+                payload->unsubscribe.topic_amount++;
+                payload->unsubscribe.topics = (String*)realloc(
+                    payload->unsubscribe.topics,
+                    payload->unsubscribe.topic_amount * sizeof(String)
+                );
+                if (!payload->unsubscribe.topics) {
+                    perror("[Couldn't reallocate memory for topics]\n");
+                    exit(ERROR_SERVER);
+                }
+
+                size_t i = payload->unsubscribe.topic_amount - 1;
+                bytes_read += read_string(fd, &(payload->unsubscribe.topics[i]));
+            }
+            break;
         default:
             payload->other.content = (uint8_t*)malloc(byte_len * sizeof(uint8_t));
             bytes_read += read_many(fd, payload->other.content, byte_len);
@@ -608,6 +627,10 @@ ssize_t write_payload(int fd, MqttPayload *payload, MqttFixedHeader fixed_header
     switch (fixed_header.type) {
         case SUBSCRIBE:
             fprintf(stderr, "[Writing SUBSCRIBE payloads not implemented.]\n");
+            exit(ERROR_SERVER);
+            break;
+        case UNSUBSCRIBE:
+            fprintf(stderr, "[Writing UNSUBSCRIBE payloads not implemented.]\n");
             exit(ERROR_SERVER);
             break;
         default:
@@ -626,6 +649,12 @@ void destroy_payload(MqttPayload payload, MqttFixedHeader fixed_header) {
                 destroy_string(payload.subscribe.topics[i].str);
             }
             free(payload.subscribe.topics);
+            break;
+        case UNSUBSCRIBE:
+            for (ssize_t i = 0; i < payload.unsubscribe.topic_amount; i++) {
+                destroy_string(payload.unsubscribe.topics[i]);
+            }
+            free(payload.unsubscribe.topics);
             break;
         default:
             free(payload.other.content);
@@ -786,6 +815,9 @@ MqttControlPacket create_suback(MqttControlPacket subscribe) {
         .props     = NULL
     }};
 
+    /* Payload contains a Reason Code for each topic.
+     * Send 0x0 (Granted QoS 0) to all.
+     */
     size_t content_len = sizeof(uint8_t) * subscribe.payload.subscribe.topic_amount;
     uint8_t *content = (uint8_t*)malloc(content_len);
 
@@ -794,6 +826,44 @@ MqttControlPacket create_suback(MqttControlPacket subscribe) {
         content[i] = 0x0;
     }
 
+    MqttPayload payload = { .other = {
+        .content = content,
+        .len = content_len
+    }};
+
+    MqttControlPacket packet = {
+        .fixed_header = fixed_header,
+        .var_header = var_header,
+        .payload = payload
+    };
+
+    return packet;
+}
+
+MqttControlPacket create_unsuback(MqttControlPacket unsubscribe) {
+    MqttFixedHeader fixed_header = {
+        .type  = UNSUBACK,
+        .flags = MQTT_FLG_UNSUBACK,
+        .len   = 0 /* updated by the send function */
+    };
+
+    MqttVarHeader var_header = { .unsuback = {
+        .packet_id = unsubscribe.var_header.unsubscribe.packet_id,
+        .props_len = 0,
+        .props     = NULL
+    }};
+
+    /* Payload contains a Reason Code for each topic.
+     * Send 0x0 (Success) to all.
+     */
+    size_t content_len = sizeof(uint8_t) * unsubscribe.payload.unsubscribe.topic_amount;
+    uint8_t *content = (uint8_t*)malloc(content_len);
+
+    for (size_t i = 0; i < content_len; i++) {
+        /* Sucess */
+        content[i] = 0x0;
+    }
+    
     MqttPayload payload = { .other = {
         .content = content,
         .len = content_len
