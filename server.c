@@ -134,7 +134,6 @@ int main (int argc, char **argv) {
 
             // VAR HEADER
             printf("Variable header:\n");
-            TODO: print stuff
             printf("pack_id = %d\n", packet.var_header.pack_id);
             printf("props.len = %d\n", packet.var_header.props_len);
             printf("payload[1] = %c\n", packet.payload.content[1]);
@@ -183,6 +182,9 @@ int main (int argc, char **argv) {
                         
                         // I don't really understand why, but if the next two bytes are
                         // [0xE0, 0x00], we got a disconnect request.
+                        // My guess is that's the start of a disconnect packet, and the
+                        // client assumes we'll instantly stop if we get these two bytes.
+
                         // Peek at the next two bytes without consuming them.
                         unsigned char peek_buffer[2];
                         ssize_t peek_result = recv(connfd, peek_buffer, 2, MSG_PEEK);
