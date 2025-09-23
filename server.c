@@ -120,10 +120,10 @@ int main (int argc, char **argv) {
             /* ========================================================= */
             /* ========================================================= */
 
-            MqttControlPacket recv = { 0 };
+            MqttControlPacket received = { 0 };
             MqttControlPacket connack = { 0 };
 
-            read_control_packet(connfd, &recv);
+            read_control_packet(connfd, &received);
 
             /* Useful for debugging
             // FIXED HEADER
@@ -148,11 +148,11 @@ int main (int argc, char **argv) {
             */
 
             /* First packet should be CONNECT */
-            if (recv.fixed_header.type != CONNECT) {
+            if (received.fixed_header.type != CONNECT) {
                 fprintf(stderr, "[Got invalid connection, probably not MQTT]\n");
                 exit(ERROR_CLIENT);
             }
-            destroy_control_packet(recv);
+            destroy_control_packet(received);
         
             /* Answer CONNECT with CONNACK */
             connack = create_connack();
@@ -163,24 +163,33 @@ int main (int argc, char **argv) {
             for (;;) {
                 int stop = 0;
 
-                memset(&recv, 0, sizeof(MqttControlPacket)); 
+                char buffer[1];
+                int result = recv(connfd, buffer, sizeof(buffer), MSG_PEEK | MSG_DONTWAIT);
+                printf("%d\n", result);
+                if (result == 0) {
+                    break;
+                } else if (result < 0 && (errno != EAGAIN && errno != EWOULDBLOCK)) {
+                    break;
+                }
+
+                memset(&received, 0, sizeof(MqttControlPacket)); 
 
                 /* This can fail with a weird message if the client
                  * suddenly closes the connection.
                  * The broker will still work, so won't fix for now. */
-                read_control_packet(connfd, &recv);
+                read_control_packet(connfd, &received);
 
-                switch ((MqttControlType)recv.fixed_header.type) {
+                switch ((MqttControlType)received.fixed_header.type) {
                     case SUBSCRIBE:
-                        treat_subscribe(connfd, mypid, recv);
+                        treat_subscribe(connfd, mypid, received);
                         break;
                     case UNSUBSCRIBE:
-                        treat_unsubscribe(connfd, mypid, recv);
+                        treat_unsubscribe(connfd, mypid, received);
                         break;
                     case PUBLISH:
                         /* We only accept PUBLISH with QoS = 0 */
-                        treat_publish(recv);
-                        stop = 1;
+                        treat_publish(received);
+                        // stop = 1;
                         break;
                     case DISCONNECT:
                         treat_disconnect(mypid);
@@ -190,10 +199,10 @@ int main (int argc, char **argv) {
                         treat_pingreq(connfd);
                         break;
                     default:
-                        fprintf(stderr, "[Warning: packet type %d not implemented]\n", recv.fixed_header.type);
+                        fprintf(stderr, "[Warning: packet type %d not implemented]\n", received.fixed_header.type);
                 }
 
-                destroy_control_packet(recv);
+                destroy_control_packet(received);
 
                 if (stop) { break; }
             }
