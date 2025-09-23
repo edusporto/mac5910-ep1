@@ -93,7 +93,7 @@ def main():
 
             print(f"Active Procs: {len(target_procs)}, CPU: {total_cpu:.2f}%, "
                   f"Net Sent: {last_sent_rate/1024:.2f} KB/s, "
-                  f"Net Recv: {last_recv_rate/1024:.2f} KB/s", end='\r')
+                  f"Net Recv: {last_recv_rate/1024:.2f} KB/s", end='\n')
 
     except KeyboardInterrupt:
         print("\n🛑 Monitor stopped manually.")
