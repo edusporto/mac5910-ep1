@@ -1,0 +1,196 @@
+1.
+Mine:
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.96 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.95 KB/s, Net Recv: 57.15 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 3.84 KB/s, Net Recv: 5.77 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.96 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.96 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+--- 📊 Final Results ---
+CPU Usage (%):      Avg: 0.00  | StdDev: 0.00
+Net Sent (KB/s):    Avg: 0.26 | StdDev: 0.77
+Net Received (KB/s): Avg: 2.37 | StdDev: 10.59
+MQTT:
+Monitoring for 30 seconds, with a 1-second interval.
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 15.21 KB/s, Net Recv: 56.08 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 7.70 KB/s, Net Recv: 9.63 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 6.71 KB/s, Net Recv: 9.59 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 6.69 KB/s, Net Recv: 8.60 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 13.42 KB/s, Net Recv: 54.63 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 16.28 KB/s, Net Recv: 24.90 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 17.19 KB/s, Net Recv: 53.47 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 9.63 KB/s, Net Recv: 40.45 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 3.85 KB/s, Net Recv: 11.55 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 3.82 KB/s, Net Recv: 86.04 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 4.76 KB/s, Net Recv: 110.44 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 2.88 KB/s, Net Recv: 80.73 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 2.88 KB/s, Net Recv: 95.93 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.96 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.96 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.96 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 1.92 KB/s, Net Recv: 23.05 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.96 KB/s, Net Recv: 26.98 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+--- 📊 Final Results ---
+CPU Usage (%):      Avg: 0.00  | StdDev: 0.00
+Net Sent (KB/s):    Avg: 4.03 | StdDev: 5.41
+Net Received (KB/s): Avg: 24.03 | StdDev: 33.53
+
+2.
+Mine:
+Active Procs: 4, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 3.73 KB/s
+Active Procs: 10, CPU: 0.30%, Net Sent: 4.66 KB/s, Net Recv: 7.46 KB/s
+Active Procs: 35, CPU: 1.10%, Net Sent: 21.00 KB/s, Net Recv: 22.82 KB/s
+Active Procs: 62, CPU: 1.40%, Net Sent: 26.12 KB/s, Net Recv: 26.12 KB/s
+Active Procs: 68, CPU: 0.80%, Net Sent: 6.97 KB/s, Net Recv: 8.71 KB/s
+Active Procs: 90, CPU: 2.20%, Net Sent: 36.78 KB/s, Net Recv: 30.65 KB/s
+Active Procs: 119, CPU: 2.10%, Net Sent: 46.39 KB/s, Net Recv: 40.48 KB/s
+Active Procs: 144, CPU: 1.90%, Net Sent: 44.41 KB/s, Net Recv: 37.71 KB/s
+Active Procs: 158, CPU: 1.40%, Net Sent: 28.79 KB/s, Net Recv: 23.04 KB/s
+Active Procs: 161, CPU: 0.20%, Net Sent: 17.02 KB/s, Net Recv: 16.07 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.95 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.95 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.95 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 6.63 KB/s, Net Recv: 60.60 KB/s
+Active Procs: 161, CPU: 0.00%, Net Sent: 0.94 KB/s, Net Recv: 0.00 KB/s
+--- 📊 Final Results ---
+CPU Usage (%):      Avg: 0.41  | StdDev: 0.72
+Net Sent (KB/s):    Avg: 8.63 | StdDev: 14.59
+Net Received (KB/s): Avg: 9.94 | StdDev: 16.15
+MQTT:
+Active Procs: 1, CPU: 0.00%, Net Sent: 4.76 KB/s, Net Recv: 8.56 KB/s
+Active Procs: 1, CPU: 0.60%, Net Sent: 18.16 KB/s, Net Recv: 9.56 KB/s
+Active Procs: 1, CPU: 3.20%, Net Sent: 158.86 KB/s, Net Recv: 100.48 KB/s
+Active Procs: 1, CPU: 3.10%, Net Sent: 147.03 KB/s, Net Recv: 93.56 KB/s
+Active Procs: 1, CPU: 3.70%, Net Sent: 171.44 KB/s, Net Recv: 110.76 KB/s
+Active Procs: 1, CPU: 3.90%, Net Sent: 176.43 KB/s, Net Recv: 109.31 KB/s
+Active Procs: 1, CPU: 3.00%, Net Sent: 130.26 KB/s, Net Recv: 82.37 KB/s
+Active Procs: 1, CPU: 0.90%, Net Sent: 60.50 KB/s, Net Recv: 48.02 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.96 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.95 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.96 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 3.84 KB/s, Net Recv: 7.68 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.96 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.96 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+Active Procs: 1, CPU: 0.00%, Net Sent: 0.00 KB/s, Net Recv: 0.00 KB/s
+--- 📊 Final Results ---
+CPU Usage (%):      Avg: 0.63  | StdDev: 1.30
+Net Sent (KB/s):    Avg: 30.18 | StdDev: 60.34
+Net Received (KB/s): Avg: 19.76 | StdDev: 38.29
+
+3.
+Mine:
+Active Procs: 29, CPU: 0.00%, Net Sent: 7.36 KB/s, Net Recv: 55.64 KB/s
+Active Procs: 44, CPU: 0.30%, Net Sent: 1.54 KB/s, Net Recv: 28.41 KB/s
+Active Procs: 65, CPU: 0.40%, Net Sent: 3.56 KB/s, Net Recv: 27.75 KB/s
+Active Procs: 83, CPU: 0.20%, Net Sent: 5.12 KB/s, Net Recv: 48.68 KB/s
+Active Procs: 105, CPU: 4.30%, Net Sent: 81.64 KB/s, Net Recv: 73.42 KB/s
+Active Procs: 133, CPU: 4.80%, Net Sent: 35.55 KB/s, Net Recv: 33.91 KB/s
+Active Procs: 145, CPU: 6.00%, Net Sent: 75.69 KB/s, Net Recv: 57.03 KB/s
+Active Procs: 168, CPU: 6.20%, Net Sent: 154.71 KB/s, Net Recv: 132.90 KB/s
+Active Procs: 204, CPU: 6.40%, Net Sent: 206.21 KB/s, Net Recv: 156.42 KB/s
+Active Procs: 234, CPU: 6.40%, Net Sent: 178.27 KB/s, Net Recv: 134.07 KB/s
+Active Procs: 273, CPU: 6.50%, Net Sent: 195.27 KB/s, Net Recv: 147.04 KB/s
+Active Procs: 314, CPU: 6.50%, Net Sent: 195.73 KB/s, Net Recv: 162.22 KB/s
+Active Procs: 345, CPU: 6.50%, Net Sent: 137.68 KB/s, Net Recv: 103.26 KB/s
+Active Procs: 381, CPU: 6.40%, Net Sent: 110.45 KB/s, Net Recv: 83.57 KB/s
+Active Procs: 406, CPU: 6.50%, Net Sent: 195.83 KB/s, Net Recv: 148.91 KB/s
+Active Procs: 449, CPU: 6.50%, Net Sent: 202.01 KB/s, Net Recv: 152.08 KB/s
+--- 📊 Final Results ---
+CPU Usage (%):      Avg: 4.62  | StdDev: 2.70
+Net Sent (KB/s):    Avg: 111.66 | StdDev: 81.34
+Net Received (KB/s): Avg: 96.58 | StdDev: 50.71
+MQTT:
+Active Procs: 1, CPU: 0.00%, Net Sent: 166.66 KB/s, Net Recv: 177.08 KB/s
+Active Procs: 1, CPU: 1.90%, Net Sent: 16.29 KB/s, Net Recv: 15.33 KB/s
+Active Procs: 1, CPU: 8.40%, Net Sent: 419.47 KB/s, Net Recv: 244.05 KB/s
+Active Procs: 1, CPU: 10.10%, Net Sent: 641.72 KB/s, Net Recv: 384.65 KB/s
+Active Procs: 1, CPU: 10.60%, Net Sent: 736.75 KB/s, Net Recv: 427.60 KB/s
+Active Procs: 1, CPU: 11.30%, Net Sent: 761.67 KB/s, Net Recv: 449.90 KB/s
+Active Procs: 1, CPU: 10.80%, Net Sent: 845.38 KB/s, Net Recv: 492.10 KB/s
+Active Procs: 1, CPU: 11.50%, Net Sent: 743.46 KB/s, Net Recv: 448.19 KB/s
+Active Procs: 1, CPU: 9.70%, Net Sent: 579.30 KB/s, Net Recv: 368.39 KB/s
+Active Procs: 1, CPU: 11.40%, Net Sent: 899.87 KB/s, Net Recv: 501.10 KB/s
+Active Procs: 1, CPU: 12.10%, Net Sent: 755.34 KB/s, Net Recv: 455.14 KB/s
+Active Procs: 1, CPU: 10.90%, Net Sent: 752.12 KB/s, Net Recv: 442.20 KB/s
+Active Procs: 1, CPU: 10.80%, Net Sent: 750.11 KB/s, Net Recv: 431.38 KB/s
+Active Procs: 1, CPU: 11.30%, Net Sent: 655.69 KB/s, Net Recv: 408.97 KB/s
+Active Procs: 1, CPU: 8.20%, Net Sent: 572.29 KB/s, Net Recv: 315.81 KB/s
+Active Procs: 1, CPU: 10.20%, Net Sent: 742.60 KB/s, Net Recv: 454.02 KB/s
+Active Procs: 1, CPU: 10.80%, Net Sent: 703.68 KB/s, Net Recv: 453.12 KB/s
+Active Procs: 1, CPU: 8.80%, Net Sent: 586.72 KB/s, Net Recv: 316.73 KB/s
+Active Procs: 1, CPU: 8.60%, Net Sent: 537.87 KB/s, Net Recv: 338.45 KB/s
+Active Procs: 1, CPU: 10.20%, Net Sent: 701.12 KB/s, Net Recv: 414.12 KB/s
+Active Procs: 1, CPU: 8.80%, Net Sent: 596.25 KB/s, Net Recv: 336.84 KB/s
+Active Procs: 1, CPU: 8.20%, Net Sent: 591.30 KB/s, Net Recv: 345.57 KB/s
+Active Procs: 1, CPU: 9.00%, Net Sent: 590.10 KB/s, Net Recv: 358.07 KB/s
+Active Procs: 1, CPU: 5.60%, Net Sent: 416.43 KB/s, Net Recv: 241.55 KB/s
+Active Procs: 1, CPU: 11.30%, Net Sent: 644.15 KB/s, Net Recv: 381.68 KB/s
+Active Procs: 1, CPU: 11.20%, Net Sent: 800.82 KB/s, Net Recv: 468.02 KB/s
+Active Procs: 1, CPU: 3.80%, Net Sent: 244.44 KB/s, Net Recv: 177.60 KB/s
+Active Procs: 1, CPU: 9.40%, Net Sent: 696.95 KB/s, Net Recv: 380.24 KB/s
+Active Procs: 1, CPU: 10.40%, Net Sent: 692.07 KB/s, Net Recv: 411.03 KB/s
+--- 📊 Final Results ---
+CPU Usage (%):      Avg: 9.15  | StdDev: 2.90
+Net Sent (KB/s):    Avg: 615.19 | StdDev: 199.25
+Net Received (KB/s): Avg: 366.86 | StdDev: 109.22
