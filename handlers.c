@@ -21,12 +21,12 @@ void catch_int(int dummy) {
     exit(0);
 }
 
-void treat_subscribe(int connfd, int user_id, MqttControlPacket packet) {
+void treat_subscribe(int connfd, long long int user_id, MqttControlPacket packet) {
     char file_name_buffer[MAX_BASE_BUFFER + 1];
     char topic_name_buffer[MAX_BASE_BUFFER + 1];
     uint16_t topic_name_size = 0;
 
-    snprintf(file_name_buffer, MAX_BASE_BUFFER, "%s/%d", BASE_FOLDER, user_id);
+    snprintf(file_name_buffer, MAX_BASE_BUFFER, "%s/%lld", BASE_FOLDER, user_id);
     ensure_dir(file_name_buffer);
 
     for (ssize_t i = 0; i < packet.payload.subscribe.topic_amount; i++) {
@@ -34,7 +34,7 @@ void treat_subscribe(int connfd, int user_id, MqttControlPacket packet) {
         snprintf(
             file_name_buffer,
             MAX_BASE_BUFFER,
-            "%s/%d/%s",
+            "%s/%lld/%s",
             BASE_FOLDER, user_id, packet.payload.subscribe.topics[i].str.val
         );
         if (ensure_fifo(file_name_buffer)) {
@@ -119,24 +119,24 @@ void treat_subscribe(int connfd, int user_id, MqttControlPacket packet) {
     destroy_control_packet(send);
 }
 
-void treat_unsubscribe(int connfd, int user_id, MqttControlPacket packet) {
+void treat_unsubscribe(int connfd, long long int user_id, MqttControlPacket packet) {
     char file_name_buffer[MAX_BASE_BUFFER + 1];
 
     for (ssize_t i = 0; i < packet.payload.unsubscribe.topic_amount; i++) {
         snprintf(
             file_name_buffer,
             MAX_BASE_BUFFER,
-            "%s/%d/%s",
+            "%s/%lld/%s",
             BASE_FOLDER, user_id, packet.payload.unsubscribe.topics[i].val
         );
 
         /* Delete FIFO, making child processes exit */
         if (remove_fifo(file_name_buffer)) {
-            printf("[User %d unsubscribed from topic: %s]\n", user_id, packet.payload.unsubscribe.topics[i].val);
+            printf("[User %lld unsubscribed from topic: %s]\n", user_id, packet.payload.unsubscribe.topics[i].val);
         } else {
             // This isn't a critical error; the user might be unsubscribing from a non-existent topic.
             fprintf(stderr,
-                "[Warning: User %d tried to unsubscribe from non-existent topic: %s]\n",
+                "[Warning: User %lld tried to unsubscribe from non-existent topic: %s]\n",
                 user_id,
                 packet.payload.unsubscribe.topics[i].val
             );
@@ -149,49 +149,65 @@ void treat_unsubscribe(int connfd, int user_id, MqttControlPacket packet) {
     destroy_control_packet(send);
 }
 
-void treat_publish(MqttControlPacket packet) {
+void treat_publish(long long int user_id, MqttControlPacket packet) {
     char *topic_name = packet.var_header.publish.topic_name.val;
     char *msg = (char*)packet.payload.other.content;
     ssize_t msg_len = packet.payload.other.len;
 
-    DIR *base_dir = opendir(BASE_FOLDER);
-    if (base_dir == NULL) {
-        perror("[PUBLISH: Failed to open base directory]");
-        return;
-    }
+    /* We'll do publishing in a child process since it can take some time. */
+    /* Thankfully, we don't have to copy the data from `packet`, since `fork` does the work for us. */
+    if (fork() == 0) {
+        printf("[PUBLISH: %lld starts publishing]\n", user_id);
 
-    struct dirent *entry;
-    while ((entry = readdir(base_dir)) != NULL) {
-        // Skip '.' and '..'
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
+        DIR *base_dir = opendir(BASE_FOLDER);
+        if (base_dir == NULL) {
+            perror("[PUBLISH: Failed to open base directory]");
+            exit(EXIT_FAILURE);
         }
 
-        /* assume all other dirs are users */
-        char fifo_path[MAX_BASE_BUFFER + 1];
-        snprintf(
-            fifo_path,
-            sizeof(fifo_path),
-            "%s/%s/%s",
-            BASE_FOLDER, entry->d_name, topic_name
-        );
+        struct dirent *entry;
+        while ((entry = readdir(base_dir)) != NULL) {
+            // Skip '.' and '..'
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                continue;
+            }
 
-        /* check if current user is subscribed to this topic */
-        struct stat st;
-        if (stat(fifo_path, &st) == 0 && S_ISFIFO(st.st_mode)) {
-            /* fifo exists, so user is subscriber */
-            int pipe_fd = open(fifo_path, O_WRONLY | O_NONBLOCK);
+            /* assume all other dirs are users */
+            char fifo_path[MAX_BASE_BUFFER + 1];
+            snprintf(
+                fifo_path,
+                sizeof(fifo_path),
+                "%s/%s/%s",
+                BASE_FOLDER, entry->d_name, topic_name
+            );
 
-            if (pipe_fd != -1) {
-                write(pipe_fd, msg, msg_len);
-                close(pipe_fd);
-            } else {
-                fprintf(stderr, "[PUBLISH: couldn't publish to %s, skipping]\n", fifo_path);
+            /* check if current user is subscribed to this topic */
+            struct stat st;
+            if (stat(fifo_path, &st) == 0 && S_ISFIFO(st.st_mode)) {
+                /* fifo exists, so user is subscriber */
+                int pipe_fd = open(fifo_path, O_WRONLY | O_NONBLOCK);
+
+                if (pipe_fd != -1) {
+                    /* This write is guaranteed to be atomic up to a certain size, defined by the operating system.
+                     * In a real implementation, we should block the pipe somehow to prevent other concurrent writes.
+                     * Unfortunately, `flock` does not work for pipes. */
+                    if (write(pipe_fd, msg, msg_len) > 0) {
+                        printf("[PUBLISH: %lld succesfully published to %s]\n", user_id, fifo_path);
+                    } else {
+                        printf("[PUBLISH: %lld opened but couldn't publish to %s\n]", user_id, fifo_path);
+                    }
+                    close(pipe_fd);
+                } else {
+                    fprintf(stderr, "[PUBLISH: %lld couldn't open %s, skipping]\n", user_id, fifo_path);
+                }
             }
         }
-    }
 
-    closedir(base_dir);
+        printf("[PUBLISH: %lld finished publishing]\n", user_id);
+
+        closedir(base_dir);
+        exit(EXIT_SUCCESS);
+    }
 }
 
 void treat_pingreq(int connfd) {
@@ -199,11 +215,11 @@ void treat_pingreq(int connfd) {
     write_control_packet(connfd, &send);
 }
 
-void treat_disconnect(int user_id) {
-    printf("[User %d sent DISCONNECT. Cleaning up resources.]\n", user_id);
+void treat_disconnect(long long int user_id) {
+    printf("[User %lld sent DISCONNECT. Cleaning up resources.]\n", user_id);
 
     char user_dir_path[MAX_BASE_BUFFER + 1];
-    snprintf(user_dir_path, sizeof(user_dir_path), "%s/%d", BASE_FOLDER, user_id);
+    snprintf(user_dir_path, sizeof(user_dir_path), "%s/%lld", BASE_FOLDER, user_id);
 
     /* Remove the user's directory. This closes all user FIFOs, which should
      * stop all forked children for `user_id`. */
