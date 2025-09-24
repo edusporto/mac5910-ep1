@@ -11,10 +11,10 @@ extern const char *BASE_FOLDER;
 
 void catch_int(int dummy);
 
-void treat_subscribe(int connfd, int user_id, MqttControlPacket packet);
-void treat_unsubscribe(int connfd, int user_id, MqttControlPacket packet);
-void treat_publish(MqttControlPacket packet);
+void treat_subscribe(int connfd, long long int user_id, MqttControlPacket packet);
+void treat_unsubscribe(int connfd, long long int user_id, MqttControlPacket packet);
+void treat_publish(long long int user_id, MqttControlPacket packet);
 void treat_pingreq(int connfd);
-void treat_disconnect(int user_id);
+void treat_disconnect(long long int user_id);
 
 #endif

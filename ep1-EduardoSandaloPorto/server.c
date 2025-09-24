@@ -44,6 +44,8 @@ int main (int argc, char **argv) {
     // Individual connection socket.
     // Must be open from the main process, and then closed after each fork.
     int connfd;
+    // Identifies the current connection.
+    long long int connection_id = 0;
 
     // Socket information
     struct sockaddr_in servaddr;
@@ -104,7 +106,10 @@ int main (int argc, char **argv) {
             perror("accept :(\n");
             exit(5);
         }
-      
+
+        // Create the identifier for the new connection.
+        connection_id++;
+
         // Forks to new process.
         // The child should treat the connection open on `connfd`, while the
         // parent should close this socket to listen for more connections.
@@ -112,7 +117,7 @@ int main (int argc, char **argv) {
             // Child process
             close(listenfd);
             int mypid = getpid();
-            printf("[Connection open for user %d]\n", mypid);
+            printf("[Connection open for user %lld on PID %d]\n", connection_id, mypid);
 
             /* ========================================================= */
             /* ========================================================= */
@@ -171,14 +176,14 @@ int main (int argc, char **argv) {
 
                 switch ((MqttControlType)received.fixed_header.type) {
                     case SUBSCRIBE:
-                        treat_subscribe(connfd, mypid, received);
+                        treat_subscribe(connfd, connection_id, received);
                         break;
                     case UNSUBSCRIBE:
-                        treat_unsubscribe(connfd, mypid, received);
+                        treat_unsubscribe(connfd, connection_id, received);
                         break;
                     case PUBLISH:
                         /* We only accept PUBLISH with QoS = 0 */
-                        treat_publish(received);
+                        treat_publish(connection_id, received);
                         
                         // I don't really understand why, but if the next two bytes are
                         // [0xE0, 0x00], we got a disconnect request.
@@ -200,7 +205,7 @@ int main (int argc, char **argv) {
                         
                         break;
                     case DISCONNECT:
-                        treat_disconnect(mypid);
+                        treat_disconnect(connection_id);
                         stop = 1;
                         break;
                     case PINGREQ:
@@ -221,7 +226,7 @@ int main (int argc, char **argv) {
             /* ========================================================= */
             /* ========================================================= */
 
-            printf("[Connection closed for user %d]\n", mypid);
+            printf("[Connection closed for user %lld on PID %d]\n", connection_id, mypid);
             exit(0);
         } else {
             close(connfd);
